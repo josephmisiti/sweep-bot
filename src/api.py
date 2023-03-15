@@ -1,14 +1,14 @@
-import urllib.request
-from pydantic import BaseModel
-
 import modal
 
-stub = modal.Stub("handle-ticket-webhook")
-
-class Item(BaseModel):
-    pr: str = "abc"
+stub = modal.Stub("handle-ticket")
 
 @stub.webhook(method="POST")
-def handle_ticket(x: Item):
-    print(x)
-    return {"filename": "hello.py", "description": "Hello world!", "code": 'print("Hello world!")', 'pr': x.pr}
+def handle_ticket(request: dict):
+    # TODO: use pydantic
+    if "issue" in request:
+        title = request["issue"]["title"]
+        body = request["issue"]["body"]
+        if body is None:
+            body = ""
+        print(title, body)
+    return {}
