@@ -1,2 +1,2 @@
-# sweep
-Sweep Core
+# swiip
+# need dotenv

@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "swiip"
+version = "0.1.0"
+description = "Swiips software chores"
+authors = ["Kevin Lu"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+openai = "^0.27.2"
+python-dotenv = "^1.0.0"
+fastapi = "^0.94.1"
+uvicorn = "^0.21.0"
+modal-client = "^0.47.1595"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
