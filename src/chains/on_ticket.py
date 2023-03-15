@@ -85,14 +85,14 @@ def on_ticket(title: str, summary: str) -> bool:
 File: hello.py
 Description: abcdefg
 """
-print('Hello world!')
+print('Hello!')
 '''.strip()
     files = implementation.split('"""\nFile: ')
     while files[0] == '':
         files = files[1:]
     subprocess.run(f'git clone https://wwzeng1:{github_access_token}@github.com/sweepai/forked_langchain.git'.split())
-    subprocess.run(f'cd forked_langchain'.split())
-    branch_name = "sweep" + title.replace(' ', '_')
+    os.chdir('forked_langchain')
+    branch_name = "sweep/" + title.replace(' ', '_')
     branch_name = branch_name[:250]
     subprocess.run(f'git checkout -b {branch_name}'.split())
     for file in files:
@@ -103,11 +103,9 @@ print('Hello world!')
         with open(file_dict['filename'], 'w') as f:
             f.write(file_dict['code'])
         
-        # handle making file
         subprocess.run(f'git add {file_dict["filename"]}'.split())
         subprocess.run(['git', 'commit', '-m', f"sweep: {file_dict['description'][:50]}"])
-    subprocess.run('rm -rf forked_langchain'.split())
-
+    subprocess.run(f'git push -u origin {branch_name}'.split())
     url = 'https://api.github.com/repos/sweepai/forked_langchain/pulls'
     headers = {
         'Accept': 'application/vnd.github+json',
@@ -118,8 +116,9 @@ print('Hello world!')
         'title': 'Amazing new feature',
         'body': 'Please pull these awesome changes in!',
         'head': branch_name,
-        'base': 'main',
+        'base': 'master',
     }
+    subprocess.run('rm -rf forked_langchain/'.split())
     response = requests.post(url, headers=headers, json=data)
     return True
 
