@@ -6,8 +6,10 @@ import re
 from dotenv import load_dotenv
 load_dotenv()
 
+import requests
 import os
 import openai
+gha_key = os.environ.get("GITHUB_ACCESS_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 system_message_prompt = '''
@@ -75,6 +77,21 @@ def on_ticket(title: str, summary: str) -> bool:
     response_dict = {key: value.strip() for key, value in response_dict.items()}
     # handle making reply
     # handle making PR
+    url = 'https://api.github.com/repos/sweepai/sweep/pulls'
+    headers = {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': f'Bearer {gha_key}',
+        'X-GitHub-Api-Version': '2022-11-28',
+    }
+    data = {
+        'title': 'Amazing new feature',
+        'body': 'Please pull these awesome changes in!',
+        'head': 'feat/test-make-branch',
+        'base': 'main',
+    }
+    response = requests.post(url, headers=headers, json=data)
+
+
     return True
 
 
