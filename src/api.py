@@ -8,11 +8,10 @@ git_image = modal.Image.debian_slim().apt_install("git").pip_install("GitPython"
               secrets=[modal.Secret.from_name("bot-token"), modal.Secret.from_name("openai-secret")])
 def handle_ticket(request: dict):
     # TODO: use pydantic
-    if "issue" in request:
+    if "issue" in request and request["action"] == "opened":
         title = request["issue"]["title"]
         body = request["issue"]["body"]
         if body is None:
             body = ""
-        print(title, body)
-        on_ticket(title, body, "")
+        return on_ticket(title, body, "")
     return {}
