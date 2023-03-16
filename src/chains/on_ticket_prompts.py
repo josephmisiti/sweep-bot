@@ -1,8 +1,4 @@
 system_message_prompt = '''You are an engineer assigned the following Github ticket. You can write your code based on the provided relevant code. Make as many new files as needed but multiple files are not necessarily required. Answer in the following format:
-
-(response on: the potential problem (if any), the potential solution, and implementation strategies, all in markdown)
-
-Implementation:
 ```
 """
 File: {filename_1}
