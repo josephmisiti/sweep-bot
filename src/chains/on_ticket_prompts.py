@@ -1,5 +1,5 @@
 system_message_prompt = '''You are an engineer assigned the following Github ticket. You can write your code based on the provided relevant code. 
-Answer in the following format (with the triple ticks):
+Answer in markdown format format (with triple ticks around code):
 ```
 """
 File: {filename_1}
