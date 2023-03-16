@@ -21,6 +21,15 @@ file_regex = r'''(?P<filename>.*)Description: (?P<description>.*)\n"""\n(?P<code
 pr_code_regex = r'''```(?P<code>.*)```'''
 pr_texts_regex = r'''Title:(?P<title>.*)Content:(?P<content>.*)'''
 
+def make_valid_string(string: str):
+    # Define a regular expression pattern that matches the allowed characters.
+    pattern = r'[^\w./-]+'
+
+    # Use the re.sub() function to replace any invalid characters with whitespace.
+    # The pattern matches any character that is not a letter, digit, period, hyphen, underscore, or forward slash.
+    valid_string = re.sub(pattern, ' ', string)
+
+    return valid_string
 
 def chatgpt(messages: dict):
     return openai.ChatCompletion.create(
@@ -240,7 +249,7 @@ def on_ticket(title: str, summary: str, issue_number: int, issue_url: str, repo_
         files = files[1:]
     subprocess.run(f'git clone https://{bot_username}:{github_access_token}@github.com/{org_name}/{repo_name}.git'.split())
     os.chdir(repo_name)
-    branch_name = "sweep/" + title.strip().replace(' ', '_').replace(":", "")
+    branch_name = make_valid_string("sweep/" + title.strip().replace(' ', '_'))
     branch_name = branch_name[:250]
     subprocess.run(f'git checkout -b {branch_name}'.split())
     for file in files:
