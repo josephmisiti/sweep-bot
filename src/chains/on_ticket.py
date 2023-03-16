@@ -19,7 +19,7 @@ file_regex = r'''(?P<filename>.*)Description: (?P<description>.*)\n"""\n(?P<code
 call_openai_title = lambda text: openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
     messages=[
-        {"role": "user", "content": "Come up with a pull request title for these changes:\n{text}\n\nPull Request Title:"} 
+        {"role": "user", "content": f"Come up with a pull request title for these changes:\n{text}\n\nPull Request Title:"} 
     ],
     max_tokens=2048,
 ).choices[0].message["content"]
@@ -27,7 +27,7 @@ call_openai_title = lambda text: openai.ChatCompletion.create(
 call_openai_summary = lambda text: openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
     messages=[
-        {"role": "user", "content": "Come up with a pull request summary for these changes:\n{text}\n\nPull Request Summary:"} 
+        {"role": "user", "content": f"Come up with a pull request summary for these changes:\n{text}\n\nPull Request Summary:"} 
     ],
     max_tokens=2048,
 ).choices[0].message["content"]
@@ -36,7 +36,7 @@ call_openai_summary = lambda text: openai.ChatCompletion.create(
 call_openai_reply = lambda text: openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
     messages=[
-        {"role": "user", "content": "Come up with a pull request reply for this description:\n{text}\n\nPull Request Reply:"} 
+        {"role": "user", "content": f"Come up with a pull request reply for this description:\n{text}\n\nPull Request Reply:"} 
     ],
     max_tokens=2048,
 ).choices[0].message["content"]
@@ -56,7 +56,6 @@ def on_ticket(title: str, summary: str, relevant_files: str) -> bool:
         repo_description=repo_description, 
         title=title, 
         description=summary, 
-        # "\n\n".join([file_format.format(**file) for file in relevant_files]
         relevant_files=relevant_files
     )
     response_dict = {}
