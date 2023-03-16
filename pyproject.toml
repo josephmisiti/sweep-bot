@@ -11,6 +11,7 @@ python-dotenv = "^1.0.0"
 fastapi = "^0.94.1"
 uvicorn = "^0.21.0"
 modal-client = "^0.47.1595"
+PyGithub = "^1.58.0"
 
 [tool.poetry.dev-dependencies]
 

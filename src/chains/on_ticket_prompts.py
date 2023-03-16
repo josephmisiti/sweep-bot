@@ -1,15 +1,4 @@
-system_message_prompt = "You are an engineer assigned to the following Github ticket."
-
-# system_message_prompt = '''You are an engineer assigned the following Github ticket. You can write your code based on the provided relevant code. 
-# Answer in markdown format format (with triple ticks around code):
-# ```
-# """
-# File: {filename_1}
-# Description: {description_1}
-# """
-# {code_1}
-# ```
-# '''
+system_message_prompt = "You're name is Sweep bot. You are an engineer assigned to the following Github ticket."
 
 human_message_prompt = '''
 Repo: {repo_name}: {repo_description}
@@ -22,7 +11,7 @@ Relevant Related Files:
 {relevant_files}
 ```
 
-Write a short response to this user, without writing long pieces of code.
+Write a short response to this user, telling them you will be working on it this PR asap and a rough summary of how you will work on it. End with "Give me a minute!".
 '''
 
 pr_code_prompt = '''
