@@ -249,7 +249,7 @@ def on_ticket(title: str, summary: str, issue_number: int, issue_url: str, repo_
         files = files[1:]
     subprocess.run(f'git clone https://{bot_username}:{github_access_token}@github.com/{org_name}/{repo_name}.git'.split())
     os.chdir(repo_name)
-    branch_name = make_valid_string("sweep/" + title.strip().replace(' ', '_'))
+    branch_name = make_valid_string("sweep/" + title.strip()).replace(' ', '_')
     branch_name = branch_name[:250]
     subprocess.run(f'git checkout -b {branch_name}'.split())
     for file in files:
