@@ -790,14 +790,14 @@ files = [
 
 [[package]]
 name = "importlib-metadata"
-version = "6.0.0"
+version = "6.1.0"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "importlib_metadata-6.0.0-py3-none-any.whl", hash = "sha256:7efb448ec9a5e313a57655d35aa54cd3e01b7e1fbcf72dce1bf06119420f5bad"},
-    {file = "importlib_metadata-6.0.0.tar.gz", hash = "sha256:e354bedeb60efa6affdcc8ae121b73544a7aa74156d047311948f6d711cd378d"},
+    {file = "importlib_metadata-6.1.0-py3-none-any.whl", hash = "sha256:ff80f3b5394912eb1b108fcfd444dc78b7f1f3e16b16188054bd01cb9cb86f09"},
+    {file = "importlib_metadata-6.1.0.tar.gz", hash = "sha256:43ce9281e097583d758c2c708c4376371261a02c34682491a8e98352365aad20"},
 ]
 
 [package.dependencies]
@@ -890,13 +890,13 @@ files = [
 
 [[package]]
 name = "modal-client"
-version = "0.47.1602"
+version = "0.48.1638"
 description = "Python client library for Modal"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "modal_client-0.47.1602-py3-none-any.whl", hash = "sha256:2226a3b82437a88b0cd7dc4d59a2f48a9ed1ea25caab2882f165d87791140cc5"},
+    {file = "modal_client-0.48.1638-py3-none-any.whl", hash = "sha256:53103d6a05e8be81ededd8554050c643a90f16ca4600d6ef72d46cb6a443c614"},
 ]
 
 [package.dependencies]
@@ -914,22 +914,11 @@ rich = ">=12.0.0"
 synchronicity = ">=0.2.14"
 tblib = ">=1.7.0"
 toml = "*"
+typeguard = ">=3.0.0"
 typer = ">=0.6.1"
 types-certifi = "*"
 types-toml = "*"
 watchfiles = "*"
-
-[[package]]
-name = "modal-py"
-version = "0.0.0"
-description = "Python client library for Modal"
-category = "main"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "modal-py-0.0.0.tar.gz", hash = "sha256:a9d48b4b580f06494546d64008b8ebb9097c540ff8f6c661bd9087d2fed05e18"},
-    {file = "modal_py-0.0.0-py3-none-any.whl", hash = "sha256:20a575ed23a71cdc671e6935500b0320bc312fc1384fee2386a7b54f8f839ebb"},
-]
 
 [[package]]
 name = "multidict"
@@ -1671,6 +1660,22 @@ slack = ["slack-sdk"]
 telegram = ["requests"]
 
 [[package]]
+name = "typeguard"
+version = "3.0.1"
+description = "Run-time type checker for Python"
+category = "main"
+optional = false
+python-versions = ">=3.7.4"
+files = [
+    {file = "typeguard-3.0.1-py3-none-any.whl", hash = "sha256:15628045c830abf68533247afd2cb04683b5ce6f4e30d5401a5ef6f5182280de"},
+    {file = "typeguard-3.0.1.tar.gz", hash = "sha256:beb0e67c5dc76eea4a6d00a6606d444d899589908362960769d0c4a1d32bca70"},
+]
+
+[package.extras]
+doc = ["packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
+test = ["mypy (>=0.991)", "pytest (>=7)"]
+
+[[package]]
 name = "typer"
 version = "0.7.0"
 description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
@@ -2022,4 +2027,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "9b5fc7bbb30b4f48294734f837ceacff9861306544299ad5036ccf3e55c71fa3"
+content-hash = "a9012e093a45e96769209d9dff435c40832a4ebc9c9018627684a9cbd3864bc8"
