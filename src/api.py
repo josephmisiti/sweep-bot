@@ -1,11 +1,22 @@
-import modal
-from src.chains.on_ticket import *
+import modal # type: ignore
+from src.chains.on_ticket import on_ticket
 
 stub = modal.Stub("handle-ticket")
-git_image = modal.Image.debian_slim().apt_install("git").pip_install("openai", "PyGithub", "loguru")
+git_image = (
+    modal.Image.debian_slim()
+    .apt_install("git")
+    .pip_install("openai", "PyGithub", "loguru")
+)
 
-@stub.webhook(method="POST", image=git_image, 
-              secrets=[modal.Secret.from_name("bot-token"), modal.Secret.from_name("openai-secret")])
+
+@stub.webhook(
+    method="POST",
+    image=git_image,
+    secrets=[
+        modal.Secret.from_name("bot-token"),
+        modal.Secret.from_name("openai-secret"),
+    ],
+)
 def handle_ticket(request: dict):
     # TODO: use pydantic
     if "issue" in request and request["action"] == "opened":
@@ -20,5 +31,7 @@ def handle_ticket(request: dict):
         repo_description = request["repository"]["description"]
         if repo_description is None:
             repo_description = ""
-        return on_ticket(title, body, number, issue_url, username, repo_full_name, repo_description)
+        return on_ticket(
+            title, body, number, issue_url, username, repo_full_name, repo_description
+        )
     return {"success": True}

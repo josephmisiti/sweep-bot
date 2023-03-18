@@ -8,19 +8,26 @@ import openai
 import subprocess
 
 from loguru import logger
-from github import Github, GithubException, ContentFile
+from github import Github, GithubException
+from github.ContentFile import ContentFile
 
 from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
-from src.chains.on_ticket_prompts import human_message_prompt, pr_code_prompt, pr_text_prompt
+from src.chains.on_ticket_prompts import (
+    human_message_prompt,
+    pr_code_prompt,
+    pr_text_prompt,
+)
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 g = Github(github_access_token)
 
+
 def make_valid_string(string: str):
-    pattern = r'[^\w./-]+'
-    return re.sub(pattern, ' ', string)
+    pattern = r"[^\w./-]+"
+    return re.sub(pattern, " ", string)
+
 
 default_relevant_directories = """
 langchain/memory
@@ -160,7 +167,7 @@ class ConversationSummaryBufferMemory(BaseChatMemory, SummarizerMixin, BaseModel
 
 
 """
-File: langchain/memory/chat_memory.py 
+File: langchain/memory/chat_memory.p
 """
 
 
@@ -215,36 +222,38 @@ class BaseChatMemory(BaseMemory, ABC):
 default_relevant_directories = ""
 default_relevant_files = ""
 
-bot_suffix = f"I'm a bot that handles simple bugs and feature requests but I might make mistakes. Please be kind!"
+bot_suffix = "I'm a bot that handles simple bugs and feature requests\
+but I might make mistakes. Please be kind!"
+
 
 def on_ticket(
-    title: str, 
-    summary: str, 
-    issue_number: int, 
-    issue_url: str, 
-    username: str, 
-    repo_full_name: str, 
-    repo_description: str, 
-    relevant_files: str = default_relevant_files
-) -> bool:
+    title: str,
+    summary: str,
+    issue_number: int,
+    issue_url: str,
+    username: str,
+    repo_full_name: str,
+    repo_description: str,
+    relevant_files: str = default_relevant_files,
+) -> dict:
     _org_name, repo_name = repo_full_name.split("/")
     subprocess.run('git config --global user.email "sweepai1248@gmail.com"'.split())
     subprocess.run('git config --global user.name "sweepaibot"'.split())
 
     # relevant_files = [] # TODO: fetch relevant files
     human_message = human_message_prompt.format(
-        repo_name=repo_name, 
+        repo_name=repo_name,
         issue_url=issue_url,
         username=username,
-        repo_description=repo_description, 
-        title=title, 
-        description=summary, 
+        repo_description=repo_description,
+        title=title,
+        description=summary,
         relevant_directories=default_relevant_directories,
-        relevant_files=relevant_files
+        relevant_files=relevant_files,
     )
     chatGPT = ChatGPT()
     reply = chatGPT.chat(human_message)
-    
+
     repo = g.get_repo(repo_full_name)
     repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
 
@@ -252,8 +261,8 @@ def on_ticket(
     while not parsed_files:
         pr_code_response = chatGPT.chat(pr_code_prompt)
         if pr_code_response:
-            files = pr_code_response.split('File: ')[1:]
-            while files and files[0] == '':
+            files = pr_code_response.split("File: ")[1:]
+            while files and files[0] == "":
                 files = files[1:]
             if not files:
                 parsed_files = []
@@ -263,7 +272,7 @@ def on_ticket(
                 try:
                     parsed_file = FileChange.from_string(file)
                     parsed_files.append(parsed_file)
-                except:
+                except Exception:
                     parsed_files = []
                     chatGPT.undo()
                     continue
@@ -274,16 +283,17 @@ def on_ticket(
         pr_texts_response = chatGPT.chat(pr_text_prompt)
         try:
             pr_texts = PullRequest.from_string(pr_texts_response)
-        except:
+        except Exception:
             chatGPT.undo()
 
-    branch_name = make_valid_string(f"sweep/Issue_{issue_number}_{make_valid_string(title.strip())}").replace(' ', '_')[:250]
+    branch_name = make_valid_string(
+        f"sweep/Issue_{issue_number}_{make_valid_string(title.strip())}"
+    ).replace(" ", "_")[:250]
     base_branch = repo.get_branch(repo.default_branch)
     try:
-        repo.create_git_ref(f"refs/heads/{branch_name}",  base_branch.commit.sha)
+        repo.create_git_ref(f"refs/heads/{branch_name}", base_branch.commit.sha)
     except Exception as e:
         logger.error(f"Error: {e}")
-        pass
 
     for file in parsed_files:
         commit_message = f"sweep: {file.description[:50]}"
@@ -292,10 +302,22 @@ def on_ticket(
             # TODO: check this is single file
             contents = repo.get_contents(file.filename)
             assert not isinstance(contents, list)
-            contents: ContentFile
-            repo.update_file(file.filename, commit_message, file.code, contents.sha, branch=branch_name)
+            repo.update_file(
+                file.filename,
+                commit_message,
+                file.code,
+                contents.sha,
+                branch=branch_name,
+            )
         except GithubException:
-            repo.create_file(file.filename, commit_message, file.code, branch=branch_name)
+            repo.create_file(
+                file.filename, commit_message, file.code, branch=branch_name
+            )
 
-    repo.create_pull(title=pr_texts.title, body=pr_texts.content, head=branch_name, base=repo.default_branch)
+    repo.create_pull(
+        title=pr_texts.title,
+        body=pr_texts.content,
+        head=branch_name,
+        base=repo.default_branch,
+    )
     return {"success": True}

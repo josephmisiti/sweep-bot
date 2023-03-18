@@ -1,0 +1,19 @@
+import cloudpickle
+import pickle
+from .exception import InvalidError as InvalidError
+from .object import Handle as Handle
+from _typeshed import Incomplete
+
+PICKLE_PROTOCOL: int
+
+class Pickler(cloudpickle.Pickler):
+    def __init__(self, buf) -> None: ...
+    def persistent_id(self, obj): ...
+
+class Unpickler(pickle.Unpickler):
+    client: Incomplete
+    def __init__(self, client, buf) -> None: ...
+    def persistent_load(self, pid): ...
+
+def serialize(obj): ...
+def deserialize(s: bytes, client): ...
