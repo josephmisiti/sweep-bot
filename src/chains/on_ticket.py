@@ -8,7 +8,7 @@ import openai
 import subprocess
 
 from loguru import logger
-from github import Github, GithubException
+from github import Github, UnknownObjectException
 
 from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
 from src.chains.on_ticket_prompts import (
@@ -22,9 +22,11 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 g = Github(github_access_token)
 
+
 def make_valid_string(string: str):
     pattern = r"[^\w./-]+"
     return re.sub(pattern, " ", string)
+
 
 default_relevant_directories = ""
 default_relevant_files = ""
@@ -33,7 +35,7 @@ bot_suffix = "I'm a bot that handles simple bugs and feature requests\
 but I might make mistakes. Please be kind!"
 
 
-def get_relevant_directories(src_contents: list, repo) -> list[str]:
+def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:
     # Initialize the relevant directories string
     relevant_directories = ""
     relevant_files = '"""'
@@ -61,10 +63,13 @@ def get_relevant_directories(src_contents: list, repo) -> list[str]:
                         file_contents = repo.get_contents(file.path)
 
                         # Decode the contents of the file from base64 and append it to the relevant files string
-                        relevant_files += '\n' + file_contents.decoded_content.decode("utf-8")
+                        relevant_files += "\n" + file_contents.decoded_content.decode(
+                            "utf-8"
+                        )
 
     # Print the relevant directories and files strings
     return relevant_directories, relevant_files
+
 
 def on_ticket(
     title: str,
@@ -80,13 +85,12 @@ def on_ticket(
     subprocess.run('git config --global user.email "sweepai1248@gmail.com"'.split())
     subprocess.run('git config --global user.name "sweepaibot"'.split())
 
-
     repo = g.get_repo(repo_full_name)
     src_contents = repo.get_contents("src")
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)
     print(relevant_directories)
     print(relevant_files)
-    
+
     # relevant_files = [] # TODO: fetch relevant files
     human_message = human_message_prompt.format(
         repo_name=repo_name,
@@ -155,7 +159,7 @@ def on_ticket(
                 contents.sha,
                 branch=branch_name,
             )
-        except GithubException:
+        except UnknownObjectException:
             repo.create_file(
                 file.filename, commit_message, file.code, branch=branch_name
             )
