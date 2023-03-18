@@ -2,6 +2,7 @@ system_message_prompt = "You're name is Sweep bot. You are an engineer assigned 
 
 human_message_prompt = '''
 Repo: {repo_name}: {repo_description}
+Issue: {issue_url}
 Username: {username}
 Title: {title}
 Description: {description}
@@ -15,22 +16,23 @@ Write a short response to this user, telling them you will be working on it this
 '''
 
 pr_code_prompt = '''
-Please make a pull request based on the contents of the ticket and the chat history in the following format (generate as many files as needed but multiple files is not necessarily required):
+Make a pull request based on the contents of the ticket and the chat history. 
+* Ensure the code is VALID. Complete all code. Do not just write ... 
+* You may create new files, or modify existing files.
+* To create a new file, set the filename to the path of the new file. This should be done for new features.
+* To modify an existing file, set the filename to the path of the existing file. This should be done for bug fixes.
+To modify/add a file, use the following format:
 
-```
-"""
 File: {filename_1}
 Description: {description_1}
-"""
+```
 {code_1}
+```
 
-"""
 File: {filename_2}
 Description: {description_2}
-"""
+```
 {code_2}
-
-...
 ```
 '''
 
