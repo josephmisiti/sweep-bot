@@ -18,7 +18,8 @@ class Message(BaseModel):
 class ChatGPT(BaseModel):
     messages: list[Message] = [
         Message(
-            role="system", content="You are a helpful assistant software developer."
+            role="system",
+            content="You are a helpful assistant software developer.",
         )
     ]
     prev_message_states: list[list[Message]] = []
@@ -64,6 +65,7 @@ class ChatGPT(BaseModel):
 
 
 # Self = TypeVar("Self", bound="RegexMatchableBaseModel")
+
 
 class RegexMatchableBaseModel(BaseModel):
     _regex: ClassVar[str]

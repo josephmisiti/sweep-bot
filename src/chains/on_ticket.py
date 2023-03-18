@@ -9,7 +9,6 @@ import subprocess
 
 from loguru import logger
 from github import Github, GithubException
-from github.ContentFile import ContentFile
 
 from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
 from src.chains.on_ticket_prompts import (
