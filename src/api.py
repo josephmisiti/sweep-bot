@@ -2,7 +2,7 @@ import modal
 from src.chains.on_ticket import *
 
 stub = modal.Stub("handle-ticket")
-git_image = modal.Image.debian_slim().apt_install("git").pip_install("openai", "PyGithub")
+git_image = modal.Image.debian_slim().apt_install("git").pip_install("openai", "PyGithub", "loguru")
 
 @stub.webhook(method="POST", image=git_image, 
               secrets=[modal.Secret.from_name("bot-token"), modal.Secret.from_name("openai-secret")])
