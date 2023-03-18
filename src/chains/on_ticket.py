@@ -4,6 +4,7 @@ On Github ticket, get ChatGPT to deal with it
 
 import re
 import os
+from typing import Tuple
 import openai
 import subprocess
 
@@ -35,7 +36,7 @@ bot_suffix = "I'm a bot that handles simple bugs and feature requests\
 but I might make mistakes. Please be kind!"
 
 
-def get_relevant_directories(src_contents: list, repo) -> list[str]:
+def get_relevant_directories(src_contents: list, repo) -> Tuple[str, str]:
     # Initialize the relevant directories string
     relevant_directories = ""
     relevant_files = '"""'
@@ -43,7 +44,8 @@ def get_relevant_directories(src_contents: list, repo) -> list[str]:
     # Iterate over the contents of the src folder
     for content in src_contents:
         if content.type == "dir":
-            # If the content is a directory, append the directory name to the relevant directories string
+            # If the content is a directory, append the directory name to the
+            # relevant directories string
             relevant_directories += content.path.replace("src/", "") + "\n"
 
             # Get the contents of the directory
@@ -52,15 +54,18 @@ def get_relevant_directories(src_contents: list, repo) -> list[str]:
             # Iterate over the contents of the directory
             for file in dir_contents:
                 if file.type == "file":
-                    # If the content is a file, append the file name to the relevant directories string with an indentation of 4 spaces
+                    # If the content is a file, append the file name to the
+                    # relevant directories string with an indentation of 4 spaces
                     relevant_directories += "    " + file.name + "\n"
 
                     if file.name.endswith(".py"):
-                        # If the content is a Python file, append the file path to the relevant files string
+                        # If the content is a Python file, append the file path
+                        # to the relevant files string
                         relevant_files += f"\nFile: {file.path}\n"
                         # Get the contents of the file
                         file_contents = repo.get_contents(file.path)
-                        # Decode the contents of the file from base64 and append it to the relevant files string
+                        # Decode the contents of the file from base64 and append
+                        # it to the relevant files string
                         relevant_files += (
                             f'"""\n{file_contents.decoded_content.decode("utf-8")}\n"""'
                         )
@@ -111,6 +116,7 @@ def on_ticket(
             while files and files[0] == "":
                 files = files[1:]
             if not files:
+                # TODO(wzeng): Fuse changes back using GPT4
                 parsed_files = []
                 chatGPT.undo()
                 continue
