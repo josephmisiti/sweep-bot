@@ -22,201 +22,9 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 g = Github(github_access_token)
 
-
 def make_valid_string(string: str):
     pattern = r"[^\w./-]+"
     return re.sub(pattern, " ", string)
-
-
-default_relevant_directories = """
-langchain/memory
-    buffer.py
-    chat_memory.py
-    entity.py
-    kg.py
-    readonly.py
-    summary_buffer.py
-    utils.py
-    buffer_window.py
-    combined.py
-    __init__.py
-    prompt.py
-    simple.py
-    summary.py
-"""
-default_relevant_files = '''
-"""
-File: langchain/memory/__init__.py
-"""
-
-
-from langchain.memory.buffer import (
-    ConversationBufferMemory,
-    ConversationStringBufferMemory,
-)
-from langchain.memory.buffer_window import ConversationBufferWindowMemory
-from langchain.memory.chat_memory import ChatMessageHistory
-from langchain.memory.combined import CombinedMemory
-from langchain.memory.entity import ConversationEntityMemory
-from langchain.memory.kg import ConversationKGMemory
-from langchain.memory.readonly import ReadOnlySharedMemory
-from langchain.memory.simple import SimpleMemory
-from langchain.memory.summary import ConversationSummaryMemory
-from langchain.memory.summary_buffer import ConversationSummaryBufferMemory
-
-__all__ = [
-    "CombinedMemory",
-    "ConversationBufferWindowMemory",
-    "ConversationBufferMemory",
-    "SimpleMemory",
-    "ConversationSummaryBufferMemory",
-    "ConversationKGMemory",
-    "ConversationEntityMemory",
-    "ConversationSummaryMemory",
-    "ChatMessageHistory",
-    "ConversationStringBufferMemory",
-    "ReadOnlySharedMemory",
-]
-
-
-"""
-File: langchain/memory/summary_buffer.py
-"""
-
-
-from typing import Any, Dict, List
-
-from pydantic import BaseModel, root_validator
-
-from langchain.memory.chat_memory import BaseChatMemory
-from langchain.memory.summary import SummarizerMixin
-from langchain.memory.utils import get_buffer_string
-from langchain.schema import BaseMessage, SystemMessage
-
-
-class ConversationSummaryBufferMemory(BaseChatMemory, SummarizerMixin, BaseModel):
-    """Buffer with summarizer for storing conversation memory."""
-
-    max_token_limit: int = 2000
-    moving_summary_buffer: str = ""
-    memory_key: str = "history"
-
-    @property
-    def buffer(self) -> List[BaseMessage]:
-        return self.chat_memory.messages
-
-    @property
-    def memory_variables(self) -> List[str]:
-        """Will always return list of memory variables.
-        :meta private:
-        """
-        return [self.memory_key]
-
-    def load_memory_variables(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Return history buffer."""
-        buffer = self.buffer
-        if self.moving_summary_buffer != "":
-            first_messages: List[BaseMessage] = [
-                SystemMessage(content=self.moving_summary_buffer)
-            ]
-            buffer = first_messages + buffer
-        if self.return_messages:
-            final_buffer: Any = buffer
-        else:
-            final_buffer = get_buffer_string(
-                buffer, human_prefix=self.human_prefix, ai_prefix=self.ai_prefix
-            )
-        return {self.memory_key: final_buffer}
-
-    @root_validator()
-    def validate_prompt_input_variables(cls, values: Dict) -> Dict:
-        """Validate that prompt input variables are consistent."""
-        prompt_variables = values["prompt"].input_variables
-        expected_keys = {"summary", "new_lines"}
-        if expected_keys != set(prompt_variables):
-            raise ValueError(
-                "Got unexpected prompt input variables. The prompt expects "
-                f"{prompt_variables}, but it should have {expected_keys}."
-            )
-        return values
-
-    def get_num_tokens_list(self, arr: List[BaseMessage]) -> List[int]:
-        """Get list of number of tokens in each string in the input array."""
-        return [self.llm.get_num_tokens(get_buffer_string([x])) for x in arr]
-
-    def save_context(self, inputs: Dict[str, Any], outputs: Dict[str, str]) -> None:
-        """Save context from this conversation to buffer."""
-        super().save_context(inputs, outputs)
-        # Prune buffer if it exceeds max token limit
-        buffer = self.chat_memory.messages
-        curr_buffer_length = sum(self.get_num_tokens_list(buffer))
-        if curr_buffer_length > self.max_token_limit:
-            pruned_memory = []
-            while curr_buffer_length > self.max_token_limit:
-                pruned_memory.append(buffer.pop(0))
-                curr_buffer_length = sum(self.get_num_tokens_list(buffer))
-            self.moving_summary_buffer = self.predict_new_summary(
-                pruned_memory, self.moving_summary_buffer
-            )
-
-    def clear(self) -> None:
-        """Clear memory contents."""
-        super().clear()
-        self.moving_summary_buffer = ""
-
-
-"""
-File: langchain/memory/chat_memory.p
-"""
-
-
-from abc import ABC
-from typing import Any, Dict, List, Optional
-
-from pydantic import BaseModel, Field
-
-from langchain.memory.utils import get_prompt_input_key
-from langchain.schema import AIMessage, BaseMemory, BaseMessage, HumanMessage
-
-
-class ChatMessageHistory(BaseModel):
-    messages: List[BaseMessage] = Field(default_factory=list)
-
-    def add_user_message(self, message: str) -> None:
-        self.messages.append(HumanMessage(content=message))
-
-    def add_ai_message(self, message: str) -> None:
-        self.messages.append(AIMessage(content=message))
-
-    def clear(self) -> None:
-        self.messages = []
-
-
-class BaseChatMemory(BaseMemory, ABC):
-    chat_memory: ChatMessageHistory = Field(default_factory=ChatMessageHistory)
-    output_key: Optional[str] = None
-    input_key: Optional[str] = None
-    return_messages: bool = False
-
-    def save_context(self, inputs: Dict[str, Any], outputs: Dict[str, str]) -> None:
-        """Save context from this conversation to buffer."""
-        if self.input_key is None:
-            prompt_input_key = get_prompt_input_key(inputs, self.memory_variables)
-        else:
-            prompt_input_key = self.input_key
-        if self.output_key is None:
-            if len(outputs) != 1:
-                raise ValueError(f"One output key expected, got {outputs.keys()}")
-            output_key = list(outputs.keys())[0]
-        else:
-            output_key = self.output_key
-        self.chat_memory.add_user_message(inputs[prompt_input_key])
-        self.chat_memory.add_ai_message(outputs[output_key])
-
-    def clear(self) -> None:
-        """Clear memory contents."""
-        self.chat_memory.clear()
-'''
 
 default_relevant_directories = ""
 default_relevant_files = ""
@@ -224,6 +32,39 @@ default_relevant_files = ""
 bot_suffix = "I'm a bot that handles simple bugs and feature requests\
 but I might make mistakes. Please be kind!"
 
+
+def get_relevant_directories(src_contents: list, repo) -> list[str]:
+    # Initialize the relevant directories string
+    relevant_directories = ""
+    relevant_files = '"""'
+
+    # Iterate over the contents of the src folder
+    for content in src_contents:
+        if content.type == "dir":
+            # If the content is a directory, append the directory name to the relevant directories string
+            relevant_directories += content.path.replace("src/", "") + "\n"
+
+            # Get the contents of the directory
+            dir_contents = repo.get_contents(content.path)
+
+            # Iterate over the contents of the directory
+            for file in dir_contents:
+                if file.type == "file":
+                    # If the content is a file, append the file name to the relevant directories string with an indentation of 4 spaces
+                    relevant_directories += "    " + file.name + "\n"
+
+                    if file.name.endswith(".py"):
+                        # If the content is a Python file, append the file path to the relevant files string
+                        relevant_files += f'\nFile: {file.path}\n"""'
+
+                        # Get the contents of the file
+                        file_contents = repo.get_contents(file.path)
+
+                        # Decode the contents of the file from base64 and append it to the relevant files string
+                        relevant_files += '\n' + file_contents.decoded_content.decode("utf-8")
+
+    # Print the relevant directories and files strings
+    return relevant_directories, relevant_files
 
 def on_ticket(
     title: str,
@@ -239,6 +80,13 @@ def on_ticket(
     subprocess.run('git config --global user.email "sweepai1248@gmail.com"'.split())
     subprocess.run('git config --global user.name "sweepaibot"'.split())
 
+
+    repo = g.get_repo(repo_full_name)
+    src_contents = repo.get_contents("src")
+    relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)
+    print(relevant_directories)
+    print(relevant_files)
+    
     # relevant_files = [] # TODO: fetch relevant files
     human_message = human_message_prompt.format(
         repo_name=repo_name,
@@ -253,7 +101,6 @@ def on_ticket(
     chatGPT = ChatGPT()
     reply = chatGPT.chat(human_message)
 
-    repo = g.get_repo(repo_full_name)
     repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
 
     parsed_files: list[FileChange] = []
