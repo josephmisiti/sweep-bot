@@ -8,7 +8,8 @@ import openai
 import subprocess
 
 from loguru import logger
-from github import Github, GithubException, ContentFile
+from github import Github, GithubException
+from github.ContentFile import ContentFile
 
 from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
 from src.chains.on_ticket_prompts import (
@@ -234,7 +235,7 @@ def on_ticket(
     repo_full_name: str,
     repo_description: str,
     relevant_files: str = default_relevant_files,
-) -> bool:
+) -> dict:
     _org_name, repo_name = repo_full_name.split("/")
     subprocess.run('git config --global user.email "sweepai1248@gmail.com"'.split())
     subprocess.run('git config --global user.name "sweepaibot"'.split())
@@ -301,7 +302,6 @@ def on_ticket(
             # TODO: check this is single file
             contents = repo.get_contents(file.filename)
             assert not isinstance(contents, list)
-            contents: ContentFile
             repo.update_file(
                 file.filename,
                 commit_message,

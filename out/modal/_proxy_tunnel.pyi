@@ -1,0 +1,3 @@
+from modal_proto import api_pb2 as api_pb2
+
+def proxy_tunnel(info: api_pb2.ProxyInfo): ...

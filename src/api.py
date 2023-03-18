@@ -1,4 +1,4 @@
-import modal
+import modal # type: ignore
 from src.chains.on_ticket import on_ticket
 
 stub = modal.Stub("handle-ticket")

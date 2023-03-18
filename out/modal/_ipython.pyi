@@ -1,0 +1,3 @@
+from _typeshed import Incomplete
+
+def is_notebook(stdout: Incomplete | None = ...): ...

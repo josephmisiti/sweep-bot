@@ -1,5 +1,5 @@
 import re
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Self, Type
 
 import openai
 from loguru import logger
@@ -63,11 +63,13 @@ class ChatGPT(BaseModel):
         return self.messages
 
 
+# Self = TypeVar("Self", bound="RegexMatchableBaseModel")
+
 class RegexMatchableBaseModel(BaseModel):
     _regex: ClassVar[str]
 
     @classmethod
-    def from_string(cls, string: str) -> "FileChange":
+    def from_string(cls: Type[Self], string: str) -> Self:
         # match = re.search(file_regex, string, re.DOTALL)
         match = re.search(cls._regex, string, re.DOTALL)
         if match is None:
