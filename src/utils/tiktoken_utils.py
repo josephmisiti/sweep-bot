@@ -1,6 +1,5 @@
 from tiktoken import Tokenizer, TokenizerException
 
-
 def count_tokens(text: str) -> int:
     tokenizer = Tokenizer()
     try:
