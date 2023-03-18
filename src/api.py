@@ -1,4 +1,4 @@
-import modal # type: ignore
+import modal  # type: ignore
 from src.chains.on_ticket import on_ticket
 
 stub = modal.Stub("handle-ticket")
@@ -32,6 +32,12 @@ def handle_ticket(request: dict):
         if repo_description is None:
             repo_description = ""
         return on_ticket(
-            title, body, number, issue_url, username, repo_full_name, repo_description
+            title,
+            body,
+            number,
+            issue_url,
+            username,
+            repo_full_name,
+            repo_description,
         )
     return {"success": True}
