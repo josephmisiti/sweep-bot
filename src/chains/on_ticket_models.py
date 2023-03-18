@@ -1,6 +1,9 @@
 import re
 from typing import ClassVar, Literal
 
+import openai
+from loguru import logger
+
 from pydantic import BaseModel
 
 
@@ -29,12 +32,14 @@ class ChatGPT(BaseModel):
         # TODO: use Tiktoken
         messages_length = sum([message.content.count(" ") for message in self.messages]) * 1.5
         max_tokens = 8192 - int(messages_length) - 1000
-        return openai.ChatCompletion.create(
+        result = openai.ChatCompletion.create(
             model=model,
             messages=self.messages_dicts,
             max_tokens=max_tokens,
             temperature=0.3
         ).choices[0].message["content"]
+        logger.info(f"Input:\n{self.messages}\n\nOutput:\n{result}")
+        return result
     
     @property
     def messages_dicts(self):

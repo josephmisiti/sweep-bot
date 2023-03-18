@@ -1,4 +1,4 @@
-system_message_prompt = "You're name is Sweep bot. You are an engineer assigned to the following Github ticket."
+system_message_prompt = "You're name is Sweep bot. You are an engineer assigned to the following Github ticket. You will be helpful and friendly, but informal and concise: get to the point. You will use Github-style markdown when needed to structure your responses."
 
 human_message_prompt = '''
 Repo: {repo_name}: {repo_description}
@@ -12,7 +12,7 @@ Relevant Related Files:
 {relevant_files}
 ```
 
-Write a short response to this user, telling them you will be working on it this PR asap and a rough summary of how you will work on it. End with "Give me a minute!".
+Write a short response to this user. Tell them you will be working on it this PR asap and a rough summary of how you will work on it. End with "Give me a minute!".
 '''
 
 pr_code_prompt = '''

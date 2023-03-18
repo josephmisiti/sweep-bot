@@ -6,9 +6,11 @@ import re
 import os
 import openai
 import subprocess
-from github import Github, GithubException, ContentFile
-from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
 
+from loguru import logger
+from github import Github, GithubException, ContentFile
+
+from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
 from src.chains.on_ticket_prompts import human_message_prompt, pr_code_prompt, pr_text_prompt
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
@@ -265,6 +267,7 @@ def on_ticket(
                     parsed_files = []
                     chatGPT.undo()
                     continue
+    logger.info("Accepted ChatGPT result")
 
     pr_texts: PullRequest | None = None
     while pr_texts is None:
@@ -279,22 +282,20 @@ def on_ticket(
     try:
         repo.create_git_ref(f"refs/heads/{branch_name}",  base_branch.commit.sha)
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
         pass
 
     for file in parsed_files:
-        file_path = file.filename
-        file_content = file.code
         commit_message = f"sweep: {file.description[:50]}"
 
         try:
             # TODO: check this is single file
-            contents = repo.get_contents(file_path)
+            contents = repo.get_contents(file.filename)
             assert not isinstance(contents, list)
             contents: ContentFile
-            repo.update_file(contents.path, commit_message, file_content, contents.sha, branch=branch_name)
+            repo.update_file(file.filename, commit_message, file.code, contents.sha, branch=branch_name)
         except GithubException:
-            repo.create_file(file_path, commit_message, file_content, branch=branch_name)
+            repo.create_file(file.filename, commit_message, file.code, branch=branch_name)
 
     repo.create_pull(title=pr_texts.title, body=pr_texts.content, head=branch_name, base=repo.default_branch)
     return {"success": True}
