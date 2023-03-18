@@ -3,12 +3,11 @@ On Github ticket, get ChatGPT to deal with it
 """
 
 import re
-from typing import Literal
-from pydantic import BaseModel
 import os
 import openai
 import subprocess
 from github import Github, GithubException, ContentFile
+from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
 
 from src.chains.on_ticket_prompts import human_message_prompt, pr_code_prompt, pr_text_prompt
 
@@ -17,53 +16,9 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 g = Github(github_access_token)
 
-file_regex = r'''(?P<filename>.*)Description:(?P<description>.*)\n*```([a-zA-Z0-9]+\n)?(?P<code>.*)```'''
-pr_code_regex = r'''```(?P<code>.*)```'''
-pr_texts_regex = r'''Title:(?P<title>.*)Content:(?P<content>.*)'''
-
 def make_valid_string(string: str):
     pattern = r'[^\w./-]+'
     return re.sub(pattern, ' ', string)
-
-ChatModel = Literal["gpt-3.5-turbo"] | Literal["gpt-4"]
-
-def call_chatgpt(messages: dict, model: ChatModel ="gpt-4"):
-    messages_length = sum([message["content"].count(" ") for message in messages]) * 1.5
-    max_tokens = 8192 - int(messages_length)
-    return openai.ChatCompletion.create(
-        model=model,
-        messages=messages,
-        max_tokens=max_tokens,
-        temperature=0.
-    ).choices[0].message["content"]
-
-class Message(BaseModel):
-    role: Literal["system"] | Literal["user"] | Literal["assistant"]
-    content: str
-
-class ChatGPT(BaseModel):
-    messages: list[Message] = [Message(role="system", content="You are a helpful assistant software developer.")]
-    prev_message_states: list[list[Message]] = []
-    model: ChatModel = "gpt-4"
-
-    def chat(self, content: str, model: ChatModel | None = None):
-        if model is None:
-            model = self.model
-        self.prev_message_states.append(self.messages)
-        self.messages.append(Message(role="user", content=content))
-        response = call_chatgpt(self.messages_dicts, model=model)
-        self.messages.append(Message(role="assistant", content=response))
-        return self.messages[-1].content
-    
-    @property
-    def messages_dicts(self):
-        return [message.dict() for message in self.messages]
-    
-    def undo(self):
-        if len(self.prev_message_states) > 0:
-            self.messages = self.prev_message_states.pop()
-        return self.messages
-    
 
 default_relevant_directories = """
 langchain/memory
@@ -81,7 +36,6 @@ langchain/memory
     simple.py
     summary.py
 """
-
 default_relevant_files = '''
 """
 File: langchain/memory/__init__.py
@@ -256,6 +210,9 @@ class BaseChatMemory(BaseMemory, ABC):
         self.chat_memory.clear()
 '''
 
+default_relevant_directories = ""
+default_relevant_files = ""
+
 bot_suffix = f"I'm a bot that handles simple bugs and feature requests but I might make mistakes. Please be kind!"
 
 def on_ticket(
@@ -287,42 +244,36 @@ def on_ticket(
     reply = chatGPT.chat(human_message)
     
     repo = g.get_repo(repo_full_name)
-    issue = repo.get_issue(number=issue_number)
-    issue.create_comment(reply + "\n\n---\n" + bot_suffix)
+    repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
 
-    parsed_files = []
+    parsed_files: list[FileChange] = []
     while not parsed_files:
         pr_code_response = chatGPT.chat(pr_code_prompt)
-        # print(pr_code_response)
         if pr_code_response:
             files = pr_code_response.split('File: ')[1:]
+            while files and files[0] == '':
+                files = files[1:]
             if not files:
+                parsed_files = []
                 chatGPT.undo()
                 continue
-            while files[0] == '':
-                files = files[1:]
             for file in files:
-                if not file:
+                try:
+                    parsed_file = FileChange.from_string(file)
+                    parsed_files.append(parsed_file)
+                except:
                     parsed_files = []
                     chatGPT.undo()
                     continue
-                file_dict = re.search(file_regex, file, re.DOTALL)
-                if file_dict is not None:
-                    file_dict = {key: value.strip() for key, value in file_dict.groupdict().items()}
-                    parsed_files.append(file_dict)
-    pr_texts = {}
-    while not pr_texts:
-        pr_texts_response = chatGPT.chat(pr_text_prompt)
-        pr_texts = re.search(pr_texts_regex, pr_texts_response, re.DOTALL)
-        if pr_texts is not None:
-            pr_texts = {key: value.strip() for key, value in pr_texts.groupdict().items()}
-        else:
-            chatGPT.undo()
-    print("Got response!")
-    pr_title = pr_texts["title"]
-    summary = pr_texts["content"]
 
-    issue_number = issue_url[issue_url.rfind("/"):]
+    pr_texts: PullRequest | None = None
+    while pr_texts is None:
+        pr_texts_response = chatGPT.chat(pr_text_prompt)
+        try:
+            pr_texts = PullRequest.from_string(pr_texts_response)
+        except:
+            chatGPT.undo()
+
     branch_name = make_valid_string(f"sweep/Issue_{issue_number}_{make_valid_string(title.strip())}").replace(' ', '_')[:250]
     base_branch = repo.get_branch(repo.default_branch)
     try:
@@ -332,16 +283,18 @@ def on_ticket(
         pass
 
     for file in parsed_files:
-        file_path = file['filename']
-        file_content = file['code']
-        commit_message = f"sweep: {file['description'][:50]}"
+        file_path = file.filename
+        file_content = file.code
+        commit_message = f"sweep: {file.description[:50]}"
 
         try:
-            # check this is single file
-            contents: ContentFile = repo.get_contents(file_path)
+            # TODO: check this is single file
+            contents = repo.get_contents(file_path)
+            assert not isinstance(contents, list)
+            contents: ContentFile
             repo.update_file(contents.path, commit_message, file_content, contents.sha, branch=branch_name)
         except GithubException:
             repo.create_file(file_path, commit_message, file_content, branch=branch_name)
 
-    repo.create_pull(title=pr_title, body=summary, head=branch_name, base=repo.default_branch)
+    repo.create_pull(title=pr_texts.title, body=pr_texts.content, head=branch_name, base=repo.default_branch)
     return {"success": True}
