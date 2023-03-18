@@ -38,12 +38,10 @@ class ChatGPT(BaseModel):
         return self.messages[-1].content
 
     def call_openai(self, model: ChatModel):
-        # TODO: use Tiktoken
         messages_length = sum(
             [count_tokens(message.content) for message in self.messages]
         )
         max_tokens = 8192 - messages_length - 1000
-        max_tokens = 8192 - int(messages_length) - 1000
         result = (
             openai.ChatCompletion.create(
                 model=model,
