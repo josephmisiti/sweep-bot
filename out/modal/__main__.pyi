@@ -1,3 +1,0 @@
-from .cli.entry_point import entrypoint_cli as entrypoint_cli
-
-def main() -> None: ...

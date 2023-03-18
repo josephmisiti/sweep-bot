@@ -234,7 +234,7 @@ def on_ticket(
     repo_full_name: str,
     repo_description: str,
     relevant_files: str = default_relevant_files,
-) -> dict:
+):
     _org_name, repo_name = repo_full_name.split("/")
     subprocess.run('git config --global user.email "sweepai1248@gmail.com"'.split())
     subprocess.run('git config --global user.name "sweepaibot"'.split())

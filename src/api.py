@@ -1,43 +1,57 @@
 import modal  # type: ignore
+from pydantic import BaseModel
 from src.chains.on_ticket import on_ticket
 
 stub = modal.Stub("handle-ticket")
-git_image = (
+image = (
     modal.Image.debian_slim()
     .apt_install("git")
     .pip_install("openai", "PyGithub", "loguru")
 )
+secrets = [
+    modal.Secret.from_name("bot-token"),
+    modal.Secret.from_name("openai-secret"),
+]
 
 
-@stub.webhook(
-    method="POST",
-    image=git_image,
-    secrets=[
-        modal.Secret.from_name("bot-token"),
-        modal.Secret.from_name("openai-secret"),
-    ],
-)
-def handle_ticket(request: dict):
+class IssueRequest(BaseModel):
+    class Issue(BaseModel):
+        class User(BaseModel):
+            login: str
+
+        title: str
+        number: int
+        html_url: str
+        user: User
+        body: str | None
+
+    class Repository(BaseModel):
+        full_name: str
+        description: str | None
+
+    action: str
+    issue: Issue | None
+    repository: Repository
+
+
+handle_ticket = stub.function(image=image, secrets=secrets)(on_ticket)
+
+
+@stub.webhook(method="POST", image=image, secrets=secrets)
+def handle_ticket_webhook(request: IssueRequest):
     # TODO: use pydantic
-    if "issue" in request and request["action"] == "opened":
-        title = request["issue"]["title"]
-        body = request["issue"]["body"]
-        if body is None:
-            body = ""
-        number = request["issue"]["number"]
-        issue_url = request["issue"]["html_url"]
-        username = request["issue"]["user"]["login"]
-        repo_full_name = request["repository"]["full_name"]
-        repo_description = request["repository"]["description"]
-        if repo_description is None:
-            repo_description = ""
-        return on_ticket(
-            title,
-            body,
-            number,
-            issue_url,
-            username,
-            repo_full_name,
-            repo_description,
+    if request.issue is not None:
+        if request.issue.body is None:
+            request.issue.body = ""
+        if request.repository.description is None:
+            request.repository.description = ""
+        handle_ticket.spawn(
+            request.issue.title,
+            request.issue.body,
+            request.issue.number,
+            request.issue.html_url,
+            request.issue.user.login,
+            request.repository.full_name,
+            request.repository.description,
         )
     return {"success": True}
