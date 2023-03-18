@@ -22,9 +22,11 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 g = Github(github_access_token)
 
+
 def make_valid_string(string: str):
     pattern = r"[^\w./-]+"
     return re.sub(pattern, " ", string)
+
 
 default_relevant_directories = ""
 default_relevant_files = ""
@@ -55,16 +57,17 @@ def get_relevant_directories(src_contents: list, repo) -> list[str]:
 
                     if file.name.endswith(".py"):
                         # If the content is a Python file, append the file path to the relevant files string
-                        relevant_files += f'\nFile: {file.path}\n"""'
-
+                        relevant_files += f"\nFile: {file.path}\n"
                         # Get the contents of the file
                         file_contents = repo.get_contents(file.path)
-
                         # Decode the contents of the file from base64 and append it to the relevant files string
-                        relevant_files += '\n' + file_contents.decoded_content.decode("utf-8")
+                        relevant_files += (
+                            f'"""\n{file_contents.decoded_content.decode("utf-8")}\n"""'
+                        )
 
     # Print the relevant directories and files strings
     return relevant_directories, relevant_files
+
 
 def on_ticket(
     title: str,
@@ -80,13 +83,10 @@ def on_ticket(
     subprocess.run('git config --global user.email "sweepai1248@gmail.com"'.split())
     subprocess.run('git config --global user.name "sweepaibot"'.split())
 
-
     repo = g.get_repo(repo_full_name)
     src_contents = repo.get_contents("src")
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)
-    print(relevant_directories)
-    print(relevant_files)
-    
+
     # relevant_files = [] # TODO: fetch relevant files
     human_message = human_message_prompt.format(
         repo_name=repo_name,
@@ -95,7 +95,7 @@ def on_ticket(
         repo_description=repo_description,
         title=title,
         description=summary,
-        relevant_directories=default_relevant_directories,
+        relevant_directories=relevant_directories,
         relevant_files=relevant_files,
     )
     chatGPT = ChatGPT()
