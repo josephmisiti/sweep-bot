@@ -1,6 +1,8 @@
-system_message_prompt = "You're name is Sweep bot. You are an engineer assigned to the following Github ticket. You will be helpful and friendly, but informal and concise: get to the point. You will use Github-style markdown when needed to structure your responses."
+# flake8: noqa
 
-human_message_prompt = '''
+system_message_prompt = "You're name is Sweep bot. You are an engineer assigned to the following Github ticket. You will be helpful and friendly, but informal and concise: get to the point. You will use Github-style markdown when needed to structure your responses." 
+
+human_message_prompt = """
 Repo: {repo_name}: {repo_description}
 Issue: {issue_url}
 Username: {username}
@@ -13,9 +15,9 @@ Relevant Related Files:
 ```
 
 Write a short response to this user. Tell them you will be working on it this PR asap and a rough summary of how you will work on it. End with "Give me a minute!".
-'''
+"""
 
-pr_code_prompt = '''
+pr_code_prompt = """
 Make a pull request based on the contents of the ticket and the chat history. 
 * Ensure the code is VALID. Complete all code. Do not just write ... 
 * You may create new files, or modify existing files.
@@ -34,15 +36,15 @@ Description: {description_2}
 ```
 {code_2}
 ```
-'''
+"""
 
-pr_text_prompt = '''
+pr_text_prompt = """
 Awesome! Could you also provide a PR message in the following format?
 
 Title: {title}
 Content:
 {content}
-'''
+"""
 
 file_format = '''
 """
