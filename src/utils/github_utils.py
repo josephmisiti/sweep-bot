@@ -3,7 +3,7 @@ import re
 
 def make_valid_string(string: str):
     pattern = r"[^\w./-]+"
-    return re.sub(pattern, " ", string)
+    return re.sub(pattern, "_", string)
 
 
 def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:

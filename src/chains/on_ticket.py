@@ -22,7 +22,6 @@ from src.chains.on_ticket_prompts import (
     create_file_prompt,
     modify_file_prompt,
 )
-from src.utils.code_utils import commit_files_to_github, get_files_from_chatgpt
 from src.utils.github_utils import get_relevant_directories, make_valid_string
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
@@ -85,37 +84,31 @@ def on_ticket(
 
     logger.info("Fetching files to modify/create...")
 
-    files_to_modify: list[FileChangeRequest] = []
-    files_to_create: list[FileChangeRequest] = []
+    files_to_change: list[FileChangeRequest] = []
     count = 0
 
-    while not files_to_modify and not files_to_create:
+    while not files_to_change:
         count += 1
         logger.info(f"Generating for the {count}th time...")
         files_to_change_response = chatGPT.chat(files_to_change_prompt)
         try:
             files_to_change = FilesToChange.from_string(files_to_change_response)
+            files_to_create: list[str] = files_to_change.files_to_create.split("*")
+            files_to_modify: list[str] = files_to_change.files_to_modify.split("*")
             logger.debug(files_to_change)
-            for file_change_request in files_to_change.files_to_create.split("*"):
+            for file_change_request, change_type in zip(
+                files_to_create + files_to_modify,
+                ["create"] * len(files_to_create) + ["modify"] * len(files_to_modify),
+            ):
                 file_change_request = file_change_request.strip()
                 if not file_change_request or file_change_request == "None":
                     continue
                 logger.debug(file_change_request)
                 try:
-                    files_to_create.append(
-                        FileChangeRequest.from_string(file_change_request)
-                    )
-                except Exception:
-                    chatGPT.undo()
-                    continue
-            for file_change_request in files_to_change.files_to_modify.split("*"):
-                file_change_request = file_change_request.strip()
-                if not file_change_request or file_change_request == "None":
-                    continue
-                logger.debug(file_change_request)
-                try:
-                    files_to_modify.append(
-                        FileChangeRequest.from_string(file_change_request)
+                    files_to_change.append(
+                        FileChangeRequest.from_string(
+                            file_change_request, change_type=change_type
+                        )
                     )
                 except Exception:
                     chatGPT.undo()
@@ -139,47 +132,34 @@ def on_ticket(
 
     logger.info("Making PR...")
     base_branch = repo.get_branch(repo.default_branch)
-    branch_name = "sweep/" + pull_request.branch_name[:250]
+    branch_name = make_valid_string("sweep/" + pull_request.branch_name[:250])
     try:
         repo.create_git_ref(f"refs/heads/{branch_name}", base_branch.commit.sha)
     except Exception as e:
         logger.error(f"Error: {e}")
 
-    for file in files_to_create:
-        # Can be made async
-        file_change = None
-        while not file_change:
-            create_file_response = chatGPT.chat(
-                create_file_prompt.format(
-                    filename=file.filename,
-                    instructions=file.instructions,
+    count = 0
+    for file in files_to_change:
+        if file.change_type == "create":
+            file_change = None
+            while not file_change:
+                create_file_response = chatGPT.chat(
+                    create_file_prompt.format(
+                        filename=file.filename,
+                        instructions=file.instructions,
+                    )
                 )
-            )
-            try:
-                file_change = FileChange.from_string(create_file_response)
-            except Exception:
-                chatGPT.undo()
-                continue
-        commit_message = f"sweep: {file_change.commit_message[:50]}"
-        try:
-            # TODO: check this is single file
-            contents = repo.get_contents(file.filename)
-            repo.update_file(
-                file.filename,
-                commit_message,
-                file_change.code,
-                contents.sha,
-                branch=branch_name,
-            )
-        except UnknownObjectException:
+                try:
+                    file_change = FileChange.from_string(create_file_response)
+                except Exception:
+                    chatGPT.undo()
+                    continue
+            commit_message = f"sweep: {file_change.commit_message[:50]}"
             repo.create_file(
                 file.filename, commit_message, file.code, branch=branch_name
             )
-
-    for file in files_to_modify:
-        # Can be made async
-        try:
-            # TODO: check this is single file
+        elif file.change_type == "modify":
+            contents = repo.get_contents(file.filename, ref=branch_name)
             file_change = None
             while not file_change:
                 modify_file_response = chatGPT.chat(
@@ -195,7 +175,6 @@ def on_ticket(
                     chatGPT.undo()
                     continue
             commit_message = f"sweep: {file_change.commit_message[:50]}"
-            contents = repo.get_contents(file.filename)
             repo.update_file(
                 file.filename,
                 commit_message,
@@ -203,10 +182,40 @@ def on_ticket(
                 contents.sha,
                 branch=branch_name,
             )
-        except UnknownObjectException:
-            repo.create_file(
-                file.filename, commit_message, file.code, branch=branch_name
-            )
+        else:
+            raise Exception("Invalid change type")
+
+    # for file in files_to_modify:
+    #     # Can be made async
+    #     try:
+    #         # TODO: check this is single file
+    #         file_change = None
+    #         while not file_change:
+    #             modify_file_response = chatGPT.chat(
+    #                 modify_file_prompt.format(
+    #                     filename=file.filename,
+    #                     instructions=file.instructions,
+    #                     code=contents.decoded_content.decode("utf-8"),
+    #                 )
+    #             )
+    #             try:
+    #                 file_change = FileChange.from_string(modify_file_response)
+    #             except Exception:
+    #                 chatGPT.undo()
+    #                 continue
+    #         commit_message = f"sweep: {file_change.commit_message[:50]}"
+    #         contents = repo.get_contents(file.filename)
+    #         repo.update_file(
+    #             file.filename,
+    #             commit_message,
+    #             file_change.code,
+    #             contents.sha,
+    #             branch=branch_name,
+    #         )
+    #     except UnknownObjectException:
+    #         repo.create_file(
+    #             file.filename, commit_message, file.code, branch=branch_name
+    #         )
 
     repo.create_pull(
         title=pull_request.title,

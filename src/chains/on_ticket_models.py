@@ -73,12 +73,12 @@ class RegexMatchableBaseModel(BaseModel):
     _regex: ClassVar[str]
 
     @classmethod
-    def from_string(cls: Type[Self], string: str) -> Self:
+    def from_string(cls: Type[Self], string: str, **kwargs) -> Self:
         # match = re.search(file_regex, string, re.DOTALL)
         match = re.search(cls._regex, string, re.DOTALL)
         if match is None:
             raise ValueError("Did not match")
-        return cls(**{k: v.strip() for k, v in match.groupdict().items()})
+        return cls(**{k: v.strip() for k, v in match.groupdict().items()}, **kwargs)
 
 
 class PullRequest(RegexMatchableBaseModel):
@@ -93,6 +93,7 @@ class PullRequest(RegexMatchableBaseModel):
 class FileChangeRequest(RegexMatchableBaseModel):
     filename: str
     instructions: str
+    change_type: Literal["modify", "create"]
     _regex = r"""`(?P<filename>.*)`:(?P<instructions>.*)"""
 
 
