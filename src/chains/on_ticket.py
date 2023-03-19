@@ -4,7 +4,6 @@ On Github ticket, get ChatGPT to deal with it
 
 import re
 import os
-from typing import Tuple
 import openai
 import subprocess
 
@@ -36,7 +35,7 @@ bot_suffix = "I'm a bot that handles simple bugs and feature requests\
 but I might make mistakes. Please be kind!"
 
 
-def get_relevant_directories(src_contents: list, repo) -> Tuple[str, str]:
+def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:
     # Initialize the relevant directories string
     relevant_directories = ""
     relevant_files = '"""'
@@ -44,6 +43,8 @@ def get_relevant_directories(src_contents: list, repo) -> Tuple[str, str]:
     # Iterate over the contents of the src folder
     for content in src_contents:
         if content.type == "dir":
+            # If the content is a directory, append the directory name to the
+            # relevant directories string
             # If the content is a directory, append the directory name to the
             # relevant directories string
             relevant_directories += content.path.replace("src/", "") + "\n"
@@ -59,9 +60,10 @@ def get_relevant_directories(src_contents: list, repo) -> Tuple[str, str]:
                     relevant_directories += "    " + file.name + "\n"
 
                     if file.name.endswith(".py"):
-                        # If the content is a Python file, append the file path
-                        # to the relevant files string
-                        relevant_files += f"\nFile: {file.path}\n"
+                        # If the content is a Python file, append the
+                        # file path to the relevant files string
+                        relevant_files += f'\nFile: {file.path}\n"""'
+
                         # Get the contents of the file
                         file_contents = repo.get_contents(file.path)
                         # Decode the contents of the file from base64 and append
@@ -83,7 +85,7 @@ def on_ticket(
     repo_full_name: str,
     repo_description: str,
     relevant_files: str = default_relevant_files,
-) -> dict:
+):
     _org_name, repo_name = repo_full_name.split("/")
     subprocess.run('git config --global user.email "sweepai1248@gmail.com"'.split())
     subprocess.run('git config --global user.name "sweepaibot"'.split())

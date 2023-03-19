@@ -36,7 +36,6 @@ class ChatGPT(BaseModel):
         return self.messages[-1].content
 
     def call_openai(self, model: ChatModel):
-        # TODO: use Tiktoken
         messages_length = (
             sum([message.content.count(" ") for message in self.messages]) * 1.5
         )
