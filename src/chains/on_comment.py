@@ -36,7 +36,7 @@ def on_comment(
 
     repo = g.get_repo(repo_full_name)
     src_contents = repo.get_contents("src", ref=ref)
-    relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)
+    relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
 
     chatGPT = ChatGPT()
     parsed_files: list[FileChange] = []

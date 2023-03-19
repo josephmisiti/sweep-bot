@@ -3,8 +3,9 @@ from typing import ClassVar, Literal, Self, Type
 
 import openai
 from loguru import logger
-
 from pydantic import BaseModel
+
+from src.chains.on_ticket_prompts import system_message_prompt
 
 
 ChatModel = Literal["gpt-3.5-turbo"] | Literal["gpt-4"]
@@ -23,7 +24,8 @@ class ChatGPT(BaseModel):
     messages: list[Message] = [
         Message(
             role="system",
-            content="You are a helpful assistant software developer.",
+            # content="You are a helpful assistant software developer.",
+            content=system_message_prompt,
         )
     ]
     prev_message_states: list[list[Message]] = []
@@ -85,15 +87,13 @@ class PullRequest(RegexMatchableBaseModel):
     title: str
     branch_name: str
     content: str
-    _regex = (
-        r"""Title:(?P<title>.*)Branch Name:(?P<branch_name>.*)Content:(?P<content>.*)"""
-    )
+    _regex = r"""Title:(?P<title>.*)Branch Name:(?P<branch_name>.*)Content:.*```(?P<content>.*)```"""
 
 
 class FileChangeRequest(RegexMatchableBaseModel):
     filename: str
     instructions: str
-    change_type: Literal["modify", "create"]
+    change_type: Literal["modify"] | Literal["create"]
     _regex = r"""`(?P<filename>.*)`:(?P<instructions>.*)"""
 
 
@@ -108,4 +108,4 @@ class FilesToChange(RegexMatchableBaseModel):
 class FileChange(RegexMatchableBaseModel):
     commit_message: str
     code: str
-    _regex = r"""Commit Message:(?P<commit_message>.*)```(?P<code>.*)```"""
+    _regex = r"""Commit Message:(?P<commit_message>[^`]*)```(?P<code>.*)```"""
