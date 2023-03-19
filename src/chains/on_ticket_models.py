@@ -3,8 +3,9 @@ from typing import ClassVar, Literal, Self, Type
 
 import openai
 from loguru import logger
-
 from pydantic import BaseModel
+
+from src.chains.on_ticket_prompts import system_message_prompt
 
 
 ChatModel = Literal["gpt-3.5-turbo"] | Literal["gpt-4"]
@@ -23,7 +24,8 @@ class ChatGPT(BaseModel):
     messages: list[Message] = [
         Message(
             role="system",
-            content="You are a helpful assistant software developer.",
+            # content="You are a helpful assistant software developer.",
+            content=system_message_prompt,
         )
     ]
     prev_message_states: list[list[Message]] = []
@@ -73,27 +75,12 @@ class RegexMatchableBaseModel(BaseModel):
     _regex: ClassVar[str]
 
     @classmethod
-    def from_string(cls: Type[Self], string: str) -> Self:
+    def from_string(cls: Type[Self], string: str, **kwargs) -> Self:
         # match = re.search(file_regex, string, re.DOTALL)
         match = re.search(cls._regex, string, re.DOTALL)
         if match is None:
             raise ValueError("Did not match")
-        return cls(**{k: v.strip() for k, v in match.groupdict().items()})
-
-
-class PullRequest(RegexMatchableBaseModel):
-    title: str
-    branch_name: str
-    content: str
-    _regex = (
-        r"""Title:(?P<title>.*)Branch Name:(?P<branch_name>.*)Content:(?P<content>.*)"""
-    )
-
-
-class FileChangeRequest(RegexMatchableBaseModel):
-    filename: str
-    instructions: str
-    _regex = r"""`(?P<filename>.*)`:(?P<instructions>.*)"""
+        return cls(**{k: v.strip() for k, v in match.groupdict().items()}, **kwargs)
 
 
 class FilesToChange(RegexMatchableBaseModel):
@@ -104,7 +91,21 @@ class FilesToChange(RegexMatchableBaseModel):
     )
 
 
+class FileChangeRequest(RegexMatchableBaseModel):
+    filename: str
+    instructions: str
+    change_type: Literal["modify"] | Literal["create"]
+    _regex = r"""`(?P<filename>.*)`:(?P<instructions>.*)"""
+
+
 class FileChange(RegexMatchableBaseModel):
     commit_message: str
     code: str
-    _regex = r"""Commit Message:(?P<commit_message>.*)```(?P<code>.*)```"""
+    _regex = r"""Commit Message:(?P<commit_message>[^`]*)```(?P<code>.*)```"""
+
+
+class PullRequest(RegexMatchableBaseModel):
+    title: str
+    branch_name: str
+    content: str
+    _regex = r"""Title:(?P<title>.*)Branch Name:(?P<branch_name>.*)Content:.*```(?P<content>.*)```"""
