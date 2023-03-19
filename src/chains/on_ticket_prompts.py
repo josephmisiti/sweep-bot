@@ -21,21 +21,21 @@ Write a short response to this user. Tell them you will be working on it this PR
 """
 
 files_to_change_prompt = """
-Provide a list of files you would like to modify or create. The list of files to create or modify may be empty: just leave the header with an empty list. Format:
+Provide a list of files you would like to modify or create with brief instructions on what to modify, in few sentences. The list of files to create or modify may be empty: just leave the header with "* None". Format:
 
 Thoughts: {thoughts}
 Create:
-* {filename_1}: {instructions_1}
-* {filename_2}: {instructions_2}
+* `{filename_1}`: {instructions_1}
+* `{filename_2}`: {instructions_2}
 Modify:
-* {filename_3}: {instructions_3}
-* {filename_4}: {instructions_4}
+* `{filename_3}`: {instructions_3}
+* `{filename_4}`: {instructions_4}
 """
 
 create_file_prompt = """
 Create the following file using the following instructions:
 
-File: {filename}
+File Name: {filename}
 
 Instructions: {instructions}
 
@@ -51,7 +51,8 @@ Commit Message: {{commit_message}}
 modify_file_prompt = """
 Modify the following file using the following instructions:
 
-File: {filename}
+File Name: {filename}
+Old Code:
 ```
 {code}
 ```

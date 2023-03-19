@@ -44,6 +44,8 @@ class ChatGPT(BaseModel):
             sum([message.content.count(" ") for message in self.messages]) * 1.5
         )
         max_tokens = model_to_max_tokens[model] - int(messages_length) - 1000
+        messages_raw = "\n".join([message.content for message in self.messages])
+        logger.info(f"Input:\n{messages_raw}")
         result = (
             openai.ChatCompletion.create(
                 model=model,
@@ -54,8 +56,7 @@ class ChatGPT(BaseModel):
             .choices[0]
             .message["content"]
         )
-        messages_raw = "\n".join([message.content for message in self.messages])
-        logger.info(f"Input:\n{messages_raw}\n\nOutput:\n{result}")
+        logger.info(f"Output:\n{result}")
         return result
 
     @property
@@ -92,13 +93,15 @@ class PullRequest(RegexMatchableBaseModel):
 class FileChangeRequest(RegexMatchableBaseModel):
     filename: str
     instructions: str
-    _regex = r"""(?P<filename>.*):(?P<instructions>.*)"""
+    _regex = r"""`(?P<filename>.*)`:(?P<instructions>.*)"""
 
 
 class FilesToChange(RegexMatchableBaseModel):
-    files_to_modify: str | None
-    files_to_create: str | None
-    _regex = r"""Thoughts:.*(Modify:(?P<files_to_modify>.*))?(Create:(?P<files_to_create>.*))?"""
+    files_to_modify: str
+    files_to_create: str
+    _regex = (
+        r"""Thoughts:.*Create:(?P<files_to_modify>.*)Modify:(?P<files_to_create>.*)"""
+    )
 
 
 class FileChange(RegexMatchableBaseModel):

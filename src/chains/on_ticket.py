@@ -107,7 +107,8 @@ def on_ticket(
 
     logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
     repo = g.get_repo(repo_full_name)
-    src_contents = repo.get_contents("src")
+    # src_contents = repo.get_contents("src")
+    src_contents = repo.get_contents("/")
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
 
     logger.info("Getting response from ChatGPT...")
@@ -123,6 +124,7 @@ def on_ticket(
         relevant_files=relevant_files,
     )
     chatGPT = ChatGPT(model="gpt-3.5-turbo")
+    # chatGPT = ChatGPT(model="gpt-4")
     reply = chatGPT.chat(human_message)
 
     logger.info("Sending response...")
@@ -136,38 +138,32 @@ def on_ticket(
     files_to_create: list[FileChangeRequest] = []
     count = 0
 
-    while not files_to_modify or not files_to_create:
+    while not files_to_modify and not files_to_create:
         count += 1
         logger.info(f"Generating for the {count}th time...")
         files_to_change_response = chatGPT.chat(files_to_change_prompt)
         try:
             files_to_change = FilesToChange.from_string(files_to_change_response)
-            if (
-                files_to_change.files_to_modify is None
-                and files_to_change.files_to_create is None  # noqa: W503
-            ):
-                continue
-            if files_to_change.files_to_modify is None:
-                files_to_change.files_to_modify = ""
-            if files_to_change.files_to_create is None:
-                files_to_change.files_to_create = ""
-            for file_change_request in files_to_change.files_to_modify.split("*"):
+            logger.debug(files_to_change)
+            for file_change_request in files_to_change.files_to_create.split("*"):
                 file_change_request = file_change_request.strip()
-                if not file_change_request:
+                if not file_change_request or file_change_request == "None":
                     continue
+                logger.debug(file_change_request)
                 try:
-                    files_to_modify.append(
+                    files_to_create.append(
                         FileChangeRequest.from_string(file_change_request)
                     )
                 except Exception:
                     chatGPT.undo()
                     continue
-            for file_change_request in files_to_change.files_to_create.split("*"):
+            for file_change_request in files_to_change.files_to_modify.split("*"):
                 file_change_request = file_change_request.strip()
-                if not file_change_request:
+                if not file_change_request or file_change_request == "None":
                     continue
+                logger.debug(file_change_request)
                 try:
-                    files_to_create.append(
+                    files_to_modify.append(
                         FileChangeRequest.from_string(file_change_request)
                     )
                 except Exception:
@@ -179,6 +175,7 @@ def on_ticket(
 
     logger.info("Generating PR...")
     pull_request = None
+    count = 0
     while not pull_request:
         count += 1
         logger.info(f"Generating for the {count}th time...")
@@ -196,30 +193,23 @@ def on_ticket(
         repo.create_git_ref(f"refs/heads/{branch_name}", base_branch.commit.sha)
     except Exception as e:
         logger.error(f"Error: {e}")
-    repo.create_pull(
-        title=pull_request.title,
-        body=pull_request.content,
-        head=branch_name,
-        base=repo.default_branch,
-    )
 
     for file in files_to_create:
         # Can be made async
-        commit_message = f"sweep: {file.commit_message[:50]}"
         file_change = None
         while not file_change:
-            modify_file_response = chatGPT.chat(
-                modify_file_prompt.format(
+            create_file_response = chatGPT.chat(
+                create_file_prompt.format(
                     filename=file.filename,
                     instructions=file.instructions,
                 )
             )
             try:
-                file_change = FileChange.from_string(modify_file_response)
+                file_change = FileChange.from_string(create_file_response)
             except Exception:
                 chatGPT.undo()
                 continue
-
+        commit_message = f"sweep: {file_change.commit_message[:50]}"
         try:
             # TODO: check this is single file
             contents = repo.get_contents(file.filename)
@@ -237,23 +227,23 @@ def on_ticket(
 
     for file in files_to_modify:
         # Can be made async
-        commit_message = f"sweep: {file.commit_message[:50]}"
-        file_change = None
-        while not file_change:
-            create_file_response = chatGPT.chat(
-                create_file_prompt.format(
-                    filename=file.filename,
-                    instructions=file.instructions,
-                )
-            )
-            try:
-                file_change = FileChange.from_string(create_file_response)
-            except Exception:
-                chatGPT.undo()
-                continue
-
         try:
             # TODO: check this is single file
+            file_change = None
+            while not file_change:
+                modify_file_response = chatGPT.chat(
+                    modify_file_prompt.format(
+                        filename=file.filename,
+                        instructions=file.instructions,
+                        code=contents.decoded_content.decode("utf-8"),
+                    )
+                )
+                try:
+                    file_change = FileChange.from_string(modify_file_response)
+                except Exception:
+                    chatGPT.undo()
+                    continue
+            commit_message = f"sweep: {file_change.commit_message[:50]}"
             contents = repo.get_contents(file.filename)
             repo.update_file(
                 file.filename,
@@ -349,5 +339,12 @@ def on_ticket(
     #         repo.create_file(
     #             file.filename, commit_message, file.code, branch=branch_name
     #         )
+
+    repo.create_pull(
+        title=pull_request.title,
+        body=pull_request.content,
+        head=branch_name,
+        base=repo.default_branch,
+    )
 
     return {"success": True}
