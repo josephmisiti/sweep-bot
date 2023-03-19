@@ -83,11 +83,12 @@ class RegexMatchableBaseModel(BaseModel):
         return cls(**{k: v.strip() for k, v in match.groupdict().items()}, **kwargs)
 
 
-class PullRequest(RegexMatchableBaseModel):
-    title: str
-    branch_name: str
-    content: str
-    _regex = r"""Title:(?P<title>.*)Branch Name:(?P<branch_name>.*)Content:.*```(?P<content>.*)```"""
+class FilesToChange(RegexMatchableBaseModel):
+    files_to_modify: str
+    files_to_create: str
+    _regex = (
+        r"""Thoughts:.*Create:(?P<files_to_modify>.*)Modify:(?P<files_to_create>.*)"""
+    )
 
 
 class FileChangeRequest(RegexMatchableBaseModel):
@@ -97,15 +98,14 @@ class FileChangeRequest(RegexMatchableBaseModel):
     _regex = r"""`(?P<filename>.*)`:(?P<instructions>.*)"""
 
 
-class FilesToChange(RegexMatchableBaseModel):
-    files_to_modify: str
-    files_to_create: str
-    _regex = (
-        r"""Thoughts:.*Create:(?P<files_to_modify>.*)Modify:(?P<files_to_create>.*)"""
-    )
-
-
 class FileChange(RegexMatchableBaseModel):
     commit_message: str
     code: str
     _regex = r"""Commit Message:(?P<commit_message>[^`]*)```(?P<code>.*)```"""
+
+
+class PullRequest(RegexMatchableBaseModel):
+    title: str
+    branch_name: str
+    content: str
+    _regex = r"""Title:(?P<title>.*)Branch Name:(?P<branch_name>.*)Content:.*```(?P<content>.*)```"""

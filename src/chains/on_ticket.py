@@ -58,7 +58,6 @@ def on_ticket(
 
     logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
     repo = g.get_repo(repo_full_name)
-    # src_contents = repo.get_contents("src")
     src_contents = repo.get_contents("/")
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
 
@@ -74,7 +73,6 @@ def on_ticket(
         relevant_files=relevant_files,
     )
     chatGPT = ChatGPT(model="gpt-3.5-turbo")
-    # chatGPT = ChatGPT(model="gpt-4")
     reply = chatGPT.chat(human_message)
 
     logger.info("Sending response...")
@@ -187,38 +185,6 @@ def on_ticket(
             )
         else:
             raise Exception("Invalid change type")
-
-    # for file in files_to_modify:
-    #     # Can be made async
-    #     try:
-    #         # TODO: check this is single file
-    #         file_change = None
-    #         while not file_change:
-    #             modify_file_response = chatGPT.chat(
-    #                 modify_file_prompt.format(
-    #                     filename=file.filename,
-    #                     instructions=file.instructions,
-    #                     code=contents.decoded_content.decode("utf-8"),
-    #                 )
-    #             )
-    #             try:
-    #                 file_change = FileChange.from_string(modify_file_response)
-    #             except Exception:
-    #                 chatGPT.undo()
-    #                 continue
-    #         commit_message = f"sweep: {file_change.commit_message[:50]}"
-    #         contents = repo.get_contents(file.filename)
-    #         repo.update_file(
-    #             file.filename,
-    #             commit_message,
-    #             file_change.code,
-    #             contents.sha,
-    #             branch=branch_name,
-    #         )
-    #     except UnknownObjectException:
-    #         repo.create_file(
-    #             file.filename, commit_message, file.code, branch=branch_name
-    #         )
 
     repo.create_pull(
         title=pull_request.title,
