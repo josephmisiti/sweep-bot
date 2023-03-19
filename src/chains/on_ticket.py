@@ -6,14 +6,15 @@ import os
 import openai
 
 from loguru import logger
-from github import Github, UnknownObjectException
+from github import Github
 
-from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
+from src.chains.on_ticket_models import ChatGPT, PullRequest
 from src.chains.on_ticket_prompts import (
     human_message_prompt,
     pr_code_prompt,
     pr_text_prompt,
 )
+from src.utils.code_utils import commit_files_to_github, get_files_from_chatgpt
 from src.utils.github_utils import get_relevant_directories, make_valid_string
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
@@ -41,7 +42,6 @@ def on_ticket(
     src_contents = repo.get_contents("src")
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)
 
-    # relevant_files = [] # TODO: fetch relevant files
     human_message = human_message_prompt.format(
         repo_name=repo_name,
         issue_url=issue_url,
@@ -57,26 +57,7 @@ def on_ticket(
 
     repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
 
-    parsed_files: list[FileChange] = []
-    while not parsed_files:
-        pr_code_response = chatGPT.chat(pr_code_prompt)
-        if pr_code_response:
-            files = pr_code_response.split("File: ")[1:]
-            while files and files[0] == "":
-                files = files[1:]
-            if not files:
-                # TODO(wzeng): Fuse changes back using GPT4
-                parsed_files = []
-                chatGPT.undo()
-                continue
-            for file in files:
-                try:
-                    parsed_file = FileChange.from_string(file)
-                    parsed_files.append(parsed_file)
-                except Exception:
-                    parsed_files = []
-                    chatGPT.undo()
-                    continue
+    parsed_files = get_files_from_chatgpt(pr_code_prompt, chatGPT)
     logger.info("Accepted ChatGPT result")
 
     pr_texts: PullRequest | None = None
@@ -96,24 +77,7 @@ def on_ticket(
     except Exception as e:
         logger.error(f"Error: {e}")
 
-    for file in parsed_files:
-        commit_message = f"sweep: {file.description[:50]}"
-
-        try:
-            # TODO: check this is single file
-            contents = repo.get_contents(file.filename)
-            assert not isinstance(contents, list)
-            repo.update_file(
-                file.filename,
-                commit_message,
-                file.code,
-                contents.sha,
-                branch=branch_name,
-            )
-        except UnknownObjectException:
-            repo.create_file(
-                file.filename, commit_message, file.code, branch=branch_name
-            )
+    commit_files_to_github(parsed_files, repo, branch_name)
 
     repo.create_pull(
         title=pr_texts.title,
