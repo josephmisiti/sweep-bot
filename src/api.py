@@ -1,6 +1,7 @@
 import modal  # type: ignore
-from pydantic import BaseModel
 from src.chains.on_ticket import on_ticket
+from src.chains.on_comment import on_comment
+from src.events import CommentCreatedEvent, IssueRequest
 
 stub = modal.Stub("handle-ticket")
 image = (
@@ -13,28 +14,8 @@ secrets = [
     modal.Secret.from_name("openai-secret"),
 ]
 
-
-class IssueRequest(BaseModel):
-    class Issue(BaseModel):
-        class User(BaseModel):
-            login: str
-
-        title: str
-        number: int
-        html_url: str
-        user: User
-        body: str | None
-
-    class Repository(BaseModel):
-        full_name: str
-        description: str | None
-
-    action: str
-    issue: Issue | None
-    repository: Repository
-
-
 handle_ticket = stub.function(image=image, secrets=secrets)(on_ticket)
+handle_comment = stub.function(image=image, secrets=secrets)(on_comment)
 
 
 @stub.webhook(method="POST", image=image, secrets=secrets)
@@ -53,4 +34,24 @@ def handle_ticket_webhook(request: IssueRequest):
             request.repository.full_name,
             request.repository.description,
         )
+    return {"success": True}
+
+
+@stub.webhook(method="POST", image=image, secrets=secrets)
+def handle_comment_webhook(comment: CommentCreatedEvent):
+    # TODO: use pydantic
+    print("REQ: ", comment)
+    print("Comment: ", comment.comment.body)
+    print("Branch: ", comment.pull_request.head.ref)
+    print("Path: ", comment.comment.path)
+    print("Body: ", comment.comment.body)
+    # handle_comment.spawn(
+    #     request.issue.title,
+    #     request.issue.body,
+    #     request.issue.number,
+    #     request.issue.html_url,
+    #     request.issue.user.login,
+    #     request.repository.full_name,
+    #     request.repository.description,
+    # )
     return {"success": True}
