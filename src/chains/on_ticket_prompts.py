@@ -20,32 +20,80 @@ Relevant Related Files:
 Write a short response to this user. Tell them you will be working on it this PR asap and a rough summary of how you will work on it. End with "Give me a minute!".
 """
 
+files_to_change_prompt = """
+Provide a list of files you would like to modify or create. The list of files to create or modify may be empty: just leave the header with an empty list. Format:
+
+Thoughts: {thoughts}
+Create:
+* {filename_1}: {instructions_1}
+* {filename_2}: {instructions_2}
+Modify:
+* {filename_3}: {instructions_3}
+* {filename_4}: {instructions_4}
+"""
+
+create_file_prompt = """
+Create the following file using the following instructions:
+
+File: {filename}
+
+Instructions: {instructions}
+
+Reply in the following format:
+
+Thoughts: {{thoughts}}
+Commit Message: {{commit_message}}
+```
+{{new_code}}
+```
+"""
+
+modify_file_prompt = """
+Modify the following file using the following instructions:
+
+File: {filename}
+```
+{code}
+```
+
+Instructions: {instructions}
+
+Reply in the following format:
+
+Thoughts: {{thoughts}}
+Commit Message: {{commit_message}}
+```
+{{new_code}}
+```
+"""
+
+
 # Make a pull request based on the contents of the ticket and the chat history.
 # TODO: change to commit message
-pr_code_prompt = """
-Make a pull request by listing the set of files you would like to add or modify. 
-* To create a new file, set the filename to the path of the new file. This should be done for new features.
-* To modify an existing file, set the filename to the path of the existing file. This should be done for bug fixes.
-* When modifying an existing file, copy the existing file contents into the code field and make the changes necessary. For small changes, most of the file should stay the same.
+pr_code_prompt = '''
+Make instructions for a pull request by listing the set of files you would like to add or modify. 
+* To create a new file, set the filename to the path of the new file with instructions on how to code the new features. This should be done for new features.
+* To modify an existing file, set the filename to the path of the existing file with instructions on what to add or remove from the code. This should be done for bug fixes.
 Format:
 
 File: {filename_1}
 Description: {description_1}
-```
+"""
 {instructions_1}
-```
+"""
 
 File: {filename_2}
 Description: {description_2}
-```
-{instructions_2}
-```
 """
+{instructions_2}
+"""
+'''
 
 pr_text_prompt = """
 Awesome! Could you also provide a PR message in the following format?
 
 Title: {title}
+Branch Name: {branch_name}
 Content:
 {content}
 """
@@ -67,7 +115,7 @@ Incorporate the following changes into the file:
 Original File:
 {original_file}
 
-Changes Requests:
+Changes Requested:
 {changes_requested}
 
 Write the new file.

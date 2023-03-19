@@ -80,14 +80,28 @@ class RegexMatchableBaseModel(BaseModel):
         return cls(**{k: v.strip() for k, v in match.groupdict().items()})
 
 
-class FileChange(RegexMatchableBaseModel):
-    filename: str
-    description: str
-    code: str
-    _regex = r"""(?P<filename>.*)Description:(?P<description>.*)```([a-zA-Z0-9]+\n)?(?P<code>.*)```"""  # noqa: E501
-
-
 class PullRequest(RegexMatchableBaseModel):
     title: str
+    branch_name: str
     content: str
-    _regex = r"""Title:(?P<title>.*)Content:(?P<content>.*)"""
+    _regex = (
+        r"""Title:(?P<title>.*)Branch Name:(?P<branch_name>.*)Content:(?P<content>.*)"""
+    )
+
+
+class FileChangeRequest(RegexMatchableBaseModel):
+    filename: str
+    instructions: str
+    _regex = r"""(?P<filename>.*):(?P<instructions>.*)"""
+
+
+class FilesToChange(RegexMatchableBaseModel):
+    files_to_modify: str | None
+    files_to_create: str | None
+    _regex = r"""Thoughts:.*(Modify:(?P<files_to_modify>.*))?(Create:(?P<files_to_create>.*))?"""
+
+
+class FileChange(RegexMatchableBaseModel):
+    commit_message: str
+    code: str
+    _regex = r"""Commit Message:(?P<commit_message>.*)```(?P<code>.*)```"""
