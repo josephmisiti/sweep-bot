@@ -5,16 +5,17 @@ On Github ticket, get ChatGPT to deal with it
 import re
 import os
 import openai
-import subprocess
 
 from loguru import logger
 from github import Github, UnknownObjectException
 
-from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
+from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest, Message
 from src.chains.on_ticket_prompts import (
     human_message_prompt,
     pr_code_prompt,
     pr_text_prompt,
+    fusing_system_message,
+    fusing_prompt,
 )
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
@@ -31,8 +32,7 @@ def make_valid_string(string: str):
 default_relevant_directories = ""
 default_relevant_files = ""
 
-bot_suffix = "I'm a bot that handles simple bugs and feature requests\
-but I might make mistakes. Please be kind!"
+bot_suffix = "I'm a bot that handles simple bugs and feature requests but I might make mistakes. Please be kind!"
 
 
 def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:
@@ -86,14 +86,27 @@ def on_ticket(
     repo_description: str,
     relevant_files: str = default_relevant_files,
 ):
+    logger.info(
+        "Calling on_ticket() with the following arguments: {title}, {summary}, {issue_number}, {issue_url}, {username}, {repo_full_name}, {repo_description}, {relevant_files}",
+        title=title,
+        summary=summary,
+        issue_number=issue_number,
+        issue_url=issue_url,
+        username=username,
+        repo_full_name=repo_full_name,
+        repo_description=repo_description,
+        relevant_files=relevant_files,
+    )
     _org_name, repo_name = repo_full_name.split("/")
-    subprocess.run('git config --global user.email "sweepai1248@gmail.com"'.split())
-    subprocess.run('git config --global user.name "sweepaibot"'.split())
+    # subprocess.run('git config --global user.email "sweepai1248@gmail.com"'.split())
+    # subprocess.run('git config --global user.name "sweepaibot"'.split())
 
+    logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
     repo = g.get_repo(repo_full_name)
     src_contents = repo.get_contents("src")
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)
 
+    logger.info("Getting response from ChatGPT...")
     # relevant_files = [] # TODO: fetch relevant files
     human_message = human_message_prompt.format(
         repo_name=repo_name,
@@ -108,10 +121,15 @@ def on_ticket(
     chatGPT = ChatGPT()
     reply = chatGPT.chat(human_message)
 
+    logger.info("Sending response...")
     repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
 
+    logger.info("Generating code...")
     parsed_files: list[FileChange] = []
+    count = 0
     while not parsed_files:
+        count += 1
+        logger.info(f"Generating for the {count}th time...")
         pr_code_response = chatGPT.chat(pr_code_prompt)
         if pr_code_response:
             files = pr_code_response.split("File: ")[1:]
@@ -130,16 +148,20 @@ def on_ticket(
                     parsed_files = []
                     chatGPT.undo()
                     continue
-    logger.info("Accepted ChatGPT result")
 
+    logger.info("Generating PR summary and text...")
     pr_texts: PullRequest | None = None
+    count = 0
     while pr_texts is None:
+        count += 1
+        logger.info(f"Generating for the {count}th time...")
         pr_texts_response = chatGPT.chat(pr_text_prompt)
         try:
             pr_texts = PullRequest.from_string(pr_texts_response)
         except Exception:
             chatGPT.undo()
 
+    logger.info("Pushing to Github...")
     branch_name = make_valid_string(
         f"sweep/Issue_{issue_number}_{make_valid_string(title.strip())}"
     ).replace(" ", "_")[:250]
@@ -149,17 +171,35 @@ def on_ticket(
     except Exception as e:
         logger.error(f"Error: {e}")
 
+    # code_fuser = ChatGPT(messages=[Message(role="system", content=fusing_system_message)], model="gpt-3.5-turbo")
+    code_fuser = ChatGPT(
+        messages=[Message(role="system", content=fusing_system_message)], model="gpt-4"
+    )
     for file in parsed_files:
+        # Can be made async
         commit_message = f"sweep: {file.description[:50]}"
 
         try:
             # TODO: check this is single file
             contents = repo.get_contents(file.filename)
             assert not isinstance(contents, list)
+            new_contents = code_fuser.chat(
+                fusing_prompt.format(
+                    original_file=contents.decoded_content.decode("utf-8"),
+                    changes_requested=file.code,
+                )
+            )
+            code_fuser.undo()
+            if "```" in new_contents:
+                match = re.search(r"```(.*)```", new_contents, re.DOTALL)
+                if match is not None:
+                    new_contents = match.group(1)
+
             repo.update_file(
                 file.filename,
                 commit_message,
-                file.code,
+                new_contents,
+                # file.code,
                 contents.sha,
                 branch=branch_name,
             )

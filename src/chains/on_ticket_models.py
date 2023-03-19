@@ -8,6 +8,10 @@ from pydantic import BaseModel
 
 
 ChatModel = Literal["gpt-3.5-turbo"] | Literal["gpt-4"]
+model_to_max_tokens = {
+    "gpt-3.5-turbo": 4096,
+    "gpt-4": 8096,
+}
 
 
 class Message(BaseModel):
@@ -26,8 +30,6 @@ class ChatGPT(BaseModel):
     model: ChatModel = "gpt-4"
 
     def chat(self, content: str, model: ChatModel | None = None):
-        if model is None:
-            model = self.model
         self.prev_message_states.append(self.messages)
         self.messages.append(Message(role="user", content=content))
         # response = call_chatgpt(self.messages_dicts, model=model)
@@ -35,11 +37,13 @@ class ChatGPT(BaseModel):
         self.messages.append(Message(role="assistant", content=response))
         return self.messages[-1].content
 
-    def call_openai(self, model: ChatModel):
+    def call_openai(self, model: ChatModel | None = None):
+        if model is None:
+            model = self.model
         messages_length = (
             sum([message.content.count(" ") for message in self.messages]) * 1.5
         )
-        max_tokens = 8192 - int(messages_length) - 1000
+        max_tokens = model_to_max_tokens[model] - int(messages_length) - 1000
         result = (
             openai.ChatCompletion.create(
                 model=model,
@@ -50,7 +54,8 @@ class ChatGPT(BaseModel):
             .choices[0]
             .message["content"]
         )
-        logger.info(f"Input:\n{self.messages}\n\nOutput:\n{result}")
+        messages_raw = "\n".join([message.content for message in self.messages])
+        logger.info(f"Input:\n{messages_raw}\n\nOutput:\n{result}")
         return result
 
     @property
@@ -61,9 +66,6 @@ class ChatGPT(BaseModel):
         if len(self.prev_message_states) > 0:
             self.messages = self.prev_message_states.pop()
         return self.messages
-
-
-# Self = TypeVar("Self", bound="RegexMatchableBaseModel")
 
 
 class RegexMatchableBaseModel(BaseModel):
