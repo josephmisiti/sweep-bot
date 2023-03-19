@@ -6,8 +6,6 @@ from loguru import logger
 
 from pydantic import BaseModel
 
-from src.utils.tiktoken_utils import count_tokens
-
 
 ChatModel = Literal["gpt-3.5-turbo"] | Literal["gpt-4"]
 
@@ -38,8 +36,8 @@ class ChatGPT(BaseModel):
         return self.messages[-1].content
 
     def call_openai(self, model: ChatModel):
-        messages_length = sum(
-            [count_tokens(message.content) for message in self.messages]
+        messages_length = (
+            sum([message.content.count(" ") for message in self.messages]) * 1.5
         )
         max_tokens = 8192 - messages_length - 1000
         result = (
