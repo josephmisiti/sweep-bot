@@ -1,5 +1,6 @@
 import modal  # type: ignore
 from src.chains.on_ticket import on_ticket
+from src.chains.on_comment import on_comment
 from src.events import CommentCreatedEvent, IssueRequest
 
 stub = modal.Stub("handle-ticket")
@@ -14,6 +15,7 @@ secrets = [
 ]
 
 handle_ticket = stub.function(image=image, secrets=secrets)(on_ticket)
+handle_comment = stub.function(image=image, secrets=secrets)(on_comment)
 
 
 @stub.webhook(method="POST", image=image, secrets=secrets)
@@ -44,7 +46,7 @@ def handle_comment_webhook(comment: CommentCreatedEvent):
     print("Branch: ", comment.pull_request.head.ref)
     print("Path: ", comment.comment.path)
     print("Body: ", comment.comment.body)
-    # handle_ticket.spawn(
+    # handle_comment.spawn(
     #     request.issue.title,
     #     request.issue.body,
     #     request.issue.number,

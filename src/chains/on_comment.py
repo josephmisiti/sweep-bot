@@ -10,10 +10,10 @@ from github import Github, UnknownObjectException
 
 from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
 from src.chains.on_ticket_prompts import (
-    human_message_prompt,
     pr_code_prompt,
     pr_text_prompt,
 )
+
 from src.utils.github_utils import get_relevant_directories, make_valid_string
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
@@ -21,11 +21,8 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 g = Github(github_access_token)
 
-bot_suffix = "I'm a bot that handles simple bugs and feature requests\
-but I might make mistakes. Please be kind!"
 
-
-def on_ticket(
+def on_comment(
     title: str,
     summary: str,
     issue_number: int,
@@ -33,30 +30,15 @@ def on_ticket(
     username: str,
     repo_full_name: str,
     repo_description: str,
-    relevant_files: str = "",
+    ref: str,
 ):
     _, repo_name = repo_full_name.split("/")
 
     repo = g.get_repo(repo_full_name)
-    src_contents = repo.get_contents("src")
+    src_contents = repo.get_contents("src", ref=ref)
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)
 
-    # relevant_files = [] # TODO: fetch relevant files
-    human_message = human_message_prompt.format(
-        repo_name=repo_name,
-        issue_url=issue_url,
-        username=username,
-        repo_description=repo_description,
-        title=title,
-        description=summary,
-        relevant_directories=relevant_directories,
-        relevant_files=relevant_files,
-    )
     chatGPT = ChatGPT()
-    reply = chatGPT.chat(human_message)
-
-    repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
-
     parsed_files: list[FileChange] = []
     while not parsed_files:
         pr_code_response = chatGPT.chat(pr_code_prompt)
