@@ -39,7 +39,7 @@ class ChatGPT(BaseModel):
         messages_length = (
             sum([message.content.count(" ") for message in self.messages]) * 1.5
         )
-        max_tokens = 8192 - messages_length - 1000
+        max_tokens = 8192 - int(messages_length) - 1000
         result = (
             openai.ChatCompletion.create(
                 model=model,
