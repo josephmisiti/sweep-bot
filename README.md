@@ -17,11 +17,3 @@ To set up the project, follow these steps:
 ## Usage
 
 Once the bot is running, it will listen for new issues and pull requests. When a new issue or pull request is created, the bot will automatically assign it to the appropriate team member based on the issue or pull request's labels.
-
-## Contributing
-
-If you'd like to contribute to Sweep, please fork the repository and create a pull request with your changes. We welcome all contributions!
-
-## License
-
-Sweep is licensed under the MIT License. See `LICENSE` for more information.
