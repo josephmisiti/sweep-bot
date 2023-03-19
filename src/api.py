@@ -55,3 +55,51 @@ def handle_ticket_webhook(request: IssueRequest):
             request.repository.description,
         )
     return {"success": True}
+
+
+class CommentCreatedEvent(BaseModel):
+    class Comment(BaseModel):
+        body: str
+        position: int
+        path: str
+
+    class PullRequest(BaseModel):
+        class Head(BaseModel):
+            ref: str
+
+        body: str
+        state: str  # "closed" or "open"
+        head: Head
+
+    class Repository(BaseModel):
+        full_name: str
+        description: str | None
+
+    class Sender(BaseModel):
+        pass
+
+    action: str
+    comment: Comment
+    pull_request: PullRequest
+    repository: Repository
+    sender: Sender
+
+
+@stub.webhook(method="POST", image=image, secrets=secrets)
+def handle_comment_webhook(comment: CommentCreatedEvent):
+    # TODO: use pydantic
+    print("REQ: ", comment)
+    print("Comment: ", comment.comment.body)
+    print("Branch: ", comment.pull_request.head.ref)
+    print("Path: ", comment.comment.path)
+    print("Body: ", comment.comment.body)
+    # handle_ticket.spawn(
+    #     request.issue.title,
+    #     request.issue.body,
+    #     request.issue.number,
+    #     request.issue.html_url,
+    #     request.issue.user.login,
+    #     request.repository.full_name,
+    #     request.repository.description,
+    # )
+    return {"success": True}
