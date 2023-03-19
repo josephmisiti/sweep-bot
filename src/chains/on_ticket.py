@@ -9,7 +9,7 @@ import openai
 import subprocess
 
 from loguru import logger
-from github import Github, GithubException
+from github import Github, UnknownObjectException
 
 from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
 from src.chains.on_ticket_prompts import (
@@ -36,7 +36,7 @@ bot_suffix = "I'm a bot that handles simple bugs and feature requests\
 but I might make mistakes. Please be kind!"
 
 
-def get_relevant_directories(src_contents: list, repo) -> Tuple[str, str]:
+def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:
     # Initialize the relevant directories string
     relevant_directories = ""
     relevant_files = '"""'
@@ -165,7 +165,7 @@ def on_ticket(
                 contents.sha,
                 branch=branch_name,
             )
-        except GithubException:
+        except UnknownObjectException:
             repo.create_file(
                 file.filename, commit_message, file.code, branch=branch_name
             )
