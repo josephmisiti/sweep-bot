@@ -15,10 +15,6 @@ from src.common.prompts import (
     human_message_prompt,
     reply_prompt,
 )
-from src.common.code_utils import (
-    commit_files_to_github,
-    create_branch,
-)
 from src.common.sweep_bot import SweepBot
 from src.utils.github_utils import get_relevant_directories
 
@@ -78,7 +74,7 @@ def on_ticket(
         relevant_files=relevant_files,
     )
     sweep_bot = SweepBot.from_system_message_content(
-        system_message_prompt + "\n\n" + human_message, model="gpt-3.5-turbo"
+        system_message_prompt + "\n\n" + human_message, model="gpt-3.5-turbo", repo=repo
     )
     reply = sweep_bot.chat(reply_prompt)
     sweep_bot.undo()  # not doing it sometimes causes problems: the bot thinks it has already has done the fixes
@@ -87,21 +83,15 @@ def on_ticket(
     repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
 
     logger.info("Fetching files to modify/create...")
-    # file_change_requests = get_files_from_chatgpt(chatGPT=sweep_bot)
     file_change_requests = sweep_bot.get_files_to_change()
 
     logger.info("Generating PR...")
-    # pull_request = generate_pull_request(sweep_bot)ChatGPT
     pull_request = sweep_bot.generate_pull_request()
 
     logger.info("Making PR...")
-    pull_request.branch_name = "sweep/" + pull_request.branch_name[:250]
 
-    create_branch(repo, pull_request)
-
-    commit_files_to_github(
-        file_change_requests, repo, sweep_bot, pull_request.branch_name
-    )
+    pull_request.branch_name = sweep_bot.create_branch(pull_request.branch_name)
+    sweep_bot.change_files_in_github(file_change_requests, pull_request.branch_name)
 
     repo.create_pull(
         title=pull_request.title,

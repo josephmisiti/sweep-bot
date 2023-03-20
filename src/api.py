@@ -24,7 +24,10 @@ def handle_ticket_webhook(request: IssueRequest):
     logger.info("handle_ticket_webhook called!")
     if (
         request.issue is not None
-        and request.action in ("opened", "assigned")
+        and (
+            request.action == "opened"
+            or (request.action == "assigned" and request.assignee.login == "sweepaibot")
+        )
         and request.issue.assignees
         and "sweepaibot" in [assignee.login for assignee in request.issue.assignees]
     ):
