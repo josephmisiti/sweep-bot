@@ -11,7 +11,7 @@ from github import Github, UnknownObjectException
 from src.chains.on_ticket_models import ChatGPT, FileChange, PullRequest
 from src.chains.on_ticket_prompts import (
     pr_code_prompt,
-    pr_text_prompt,
+    pull_request_prompt,
 )
 
 from src.utils.github_utils import get_relevant_directories, make_valid_string
@@ -63,7 +63,7 @@ def on_comment(
 
     pr_texts: PullRequest | None = None
     while pr_texts is None:
-        pr_texts_response = chatGPT.chat(pr_text_prompt)
+        pr_texts_response = chatGPT.chat(pull_request_prompt)
         try:
             pr_texts = PullRequest.from_string(pr_texts_response)
         except Exception:

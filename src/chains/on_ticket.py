@@ -10,19 +10,19 @@ import openai
 from loguru import logger
 from github import Github
 
-from src.chains.on_ticket_models import (
-    Message,
-    ChatGPT,
-    PullRequest,
-)
+from src.chains.on_ticket_models import ChatGPT
 from src.chains.on_ticket_prompts import (
     system_message_prompt,
     human_message_prompt,
     reply_prompt,
-    pr_text_prompt,
 )
-from src.utils.code_utils import commit_files_to_github, get_files_from_chatgpt
-from src.utils.github_utils import get_relevant_directories, make_valid_string
+from src.utils.code_utils import (
+    commit_files_to_github,
+    create_branch,
+    generate_pull_request,
+    get_files_from_chatgpt,
+)
+from src.utils.github_utils import get_relevant_directories
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
@@ -49,6 +49,7 @@ def on_ticket(
     # 3. Get files to change
     # 4. Get file changes
     # 5. Create PR
+
     logger.info(
         "Calling on_ticket() with the following arguments: {title}, {summary}, {issue_number}, {issue_url}, {username}, {repo_full_name}, {repo_description}, {relevant_files}",
         title=title,
@@ -78,13 +79,8 @@ def on_ticket(
         relevant_directories=relevant_directories,
         relevant_files=relevant_files,
     )
-    chatGPT = ChatGPT(
-        model="gpt-3.5-turbo",
-        messages=[
-            Message(
-                role="system", content=system_message_prompt + "\n\n" + human_message
-            )
-        ],
+    chatGPT = ChatGPT.from_system_message_content(
+        system_message_prompt + "\n\n" + human_message, model="gpt-3.5-turbo"
     )
     reply = chatGPT.chat(reply_prompt)
     chatGPT.undo()  # not doing it sometimes causes problems: the bot thinks it has already has done the fixes
@@ -96,40 +92,21 @@ def on_ticket(
     file_change_requests = get_files_from_chatgpt(chatGPT=chatGPT)
 
     logger.info("Generating PR...")
-    pull_request = None
-    for count in range(5):
-        if pull_request:
-            break
-        try:
-            logger.info(f"Generating for the {count}th time...")
-            pr_text_response = chatGPT.chat(pr_text_prompt)
-            pull_request = PullRequest.from_string(pr_text_response)
-        except Exception:
-            logger.info("Failed to parse! Retrying...")
-            chatGPT.undo()
-            continue
-    else:
-        raise Exception("Could not generate PR text")
+    pull_request = generate_pull_request(chatGPT)
 
     logger.info("Making PR...")
-    base_branch = repo.get_branch(repo.default_branch)
-    branch_name = make_valid_string("sweep/" + pull_request.branch_name[:250])
-    try:
-        repo.create_git_ref(f"refs/heads/{branch_name}", base_branch.commit.sha)
-    except Exception as e:
-        logger.error(f"Error: {e}")
+    pull_request.branch_name = "sweep/" + pull_request.branch_name[:250]
+
+    create_branch(repo, pull_request)
 
     commit_files_to_github(
-        file_change_requests=file_change_requests,
-        repo=repo,
-        chatGPT=chatGPT,
-        branch_name=branch_name,
+        file_change_requests, repo, chatGPT, pull_request.branch_name
     )
 
     repo.create_pull(
         title=pull_request.title,
         body=pull_request.content,  # link back to issue
-        head=branch_name,
+        head=pull_request.branch_name,
         base=repo.default_branch,
     )
 

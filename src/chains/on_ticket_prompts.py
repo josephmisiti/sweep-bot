@@ -73,7 +73,7 @@ Commit Message: {{commit_message}}
 pr_code_prompt = ""  # TODO: deprecate this
 
 
-pr_text_prompt = """
+pull_request_prompt = """
 Awesome! Could you also provide a PR message in the following format? Content can be in markdown. Thanks!
 
 Title: {title}
