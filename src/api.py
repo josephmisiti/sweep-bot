@@ -23,7 +23,7 @@ def handle_ticket_webhook(request: IssueRequest):
     # TODO: use pydantic
     if (
         request.issue is not None
-        and request.action == "opened"
+        and request.issue.assignees
         and "sweepaibot" in [assignee.login for assignee in request.issue.assignees]
     ):
         if request.issue.body is None:
