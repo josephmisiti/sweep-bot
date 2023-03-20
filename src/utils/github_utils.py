@@ -1,5 +1,4 @@
 import re
-from github.Repository import Repository
 
 
 def make_valid_string(string: str):
