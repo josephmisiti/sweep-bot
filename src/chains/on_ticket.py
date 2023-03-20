@@ -10,18 +10,13 @@ from github import Github
 
 from src.chains.on_ticket_models import (
     ChatGPT,
-    FileChange,
-    FileChangeRequest,
-    FilesToChange,
     PullRequest,
 )
 from src.chains.on_ticket_prompts import (
     human_message_prompt,
     pr_text_prompt,
-    files_to_change_prompt,
-    create_file_prompt,
-    modify_file_prompt,
 )
+from src.utils.code_utils import commit_files_to_github, get_files_from_chatgpt
 from src.utils.github_utils import get_relevant_directories, make_valid_string
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
@@ -33,6 +28,12 @@ bot_suffix = "I'm a bot that handles simple bugs and feature requests\
 but I might make mistakes. Please be kind!"
 
 
+# Flow:
+# 1. Get relevant files
+# 2: Get human message
+# 3. Get files to change
+# 4. Get file changes
+# 5. Create PR
 def on_ticket(
     title: str,
     summary: str,
@@ -82,38 +83,7 @@ def on_ticket(
 
     logger.info("Fetching files to modify/create...")
 
-    file_change_requests: list[FileChangeRequest] = []
-    count = 0
-
-    while not file_change_requests:
-        count += 1
-        logger.info(f"Generating for the {count}th time...")
-        files_to_change_response = chatGPT.chat(files_to_change_prompt)
-        try:
-            files_to_change = FilesToChange.from_string(files_to_change_response)
-            files_to_create: list[str] = files_to_change.files_to_create.split("*")
-            files_to_modify: list[str] = files_to_change.files_to_modify.split("*")
-            logger.debug(file_change_requests)
-            for file_change_request, change_type in zip(
-                files_to_create + files_to_modify,
-                ["create"] * len(files_to_create) + ["modify"] * len(files_to_modify),
-            ):
-                file_change_request = file_change_request.strip()
-                if not file_change_request or file_change_request == "None":
-                    continue
-                logger.debug(file_change_request, change_type)
-                try:
-                    file_change_requests.append(
-                        FileChangeRequest.from_string(
-                            file_change_request, change_type=change_type
-                        )
-                    )
-                except Exception:
-                    chatGPT.undo()
-                    continue
-        except Exception:
-            chatGPT.undo()
-            continue
+    file_change_requests = get_files_from_chatgpt(chatGPT=chatGPT)
 
     logger.info("Generating PR...")
     pull_request = None
@@ -136,55 +106,12 @@ def on_ticket(
     except Exception as e:
         logger.error(f"Error: {e}")
 
-    count = 0
-    for file in file_change_requests:
-        if file.change_type == "create":
-            file_change = None
-            while not file_change:
-                create_file_response = chatGPT.chat(
-                    create_file_prompt.format(
-                        filename=file.filename,
-                        instructions=file.instructions,
-                    )
-                )
-                try:
-                    file_change = FileChange.from_string(create_file_response)
-                except Exception:
-                    chatGPT.undo()
-                    continue
-            commit_message = f"sweep: {file_change.commit_message[:50]}"
-            logger.debug(
-                f"{file.filename}, {commit_message}, {file_change.code}, {branch_name}"
-            )
-            repo.create_file(
-                file.filename, commit_message, file_change.code, branch=branch_name
-            )
-        elif file.change_type == "modify":
-            contents = repo.get_contents(file.filename, ref=branch_name)
-            file_change = None
-            while not file_change:
-                modify_file_response = chatGPT.chat(
-                    modify_file_prompt.format(
-                        filename=file.filename,
-                        instructions=file.instructions,
-                        code=contents.decoded_content.decode("utf-8"),
-                    )
-                )
-                try:
-                    file_change = FileChange.from_string(modify_file_response)
-                except Exception:
-                    chatGPT.undo()
-                    continue
-            commit_message = f"sweep: {file_change.commit_message[:50]}"
-            repo.update_file(
-                file.filename,
-                commit_message,
-                file_change.code,
-                contents.sha,
-                branch=branch_name,
-            )
-        else:
-            raise Exception("Invalid change type")
+    commit_files_to_github(
+        file_change_requests=file_change_requests,
+        repo=repo,
+        chatGPT=chatGPT,
+        branch_name=branch_name,
+    )
 
     repo.create_pull(
         title=pull_request.title,

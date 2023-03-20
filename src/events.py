@@ -34,11 +34,15 @@ class IssueRequest(BaseModel):
         class User(BaseModel):
             login: str
 
+        class Assignees(BaseModel):
+            login: str
+
         title: str
         number: int
         html_url: str
         user: User
         body: str | None
+        assignees: list[Assignees]
 
     class Repository(BaseModel):
         full_name: str
