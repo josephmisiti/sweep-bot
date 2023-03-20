@@ -10,7 +10,6 @@ import openai
 from loguru import logger
 from github import Github
 
-from src.common.models import ChatGPT
 from src.common.prompts import (
     system_message_prompt,
     human_message_prompt,
@@ -19,9 +18,8 @@ from src.common.prompts import (
 from src.common.code_utils import (
     commit_files_to_github,
     create_branch,
-    generate_pull_request,
-    get_files_from_chatgpt,
 )
+from src.common.sweep_bot import SweepBot
 from src.utils.github_utils import get_relevant_directories
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
@@ -79,20 +77,22 @@ def on_ticket(
         relevant_directories=relevant_directories,
         relevant_files=relevant_files,
     )
-    chatGPT = ChatGPT.from_system_message_content(
+    sweep_bot = SweepBot.from_system_message_content(
         system_message_prompt + "\n\n" + human_message, model="gpt-3.5-turbo"
     )
-    reply = chatGPT.chat(reply_prompt)
-    chatGPT.undo()  # not doing it sometimes causes problems: the bot thinks it has already has done the fixes
+    reply = sweep_bot.chat(reply_prompt)
+    sweep_bot.undo()  # not doing it sometimes causes problems: the bot thinks it has already has done the fixes
 
     logger.info("Sending response...")
     repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
 
     logger.info("Fetching files to modify/create...")
-    file_change_requests = get_files_from_chatgpt(chatGPT=chatGPT)
+    # file_change_requests = get_files_from_chatgpt(chatGPT=sweep_bot)
+    file_change_requests = sweep_bot.get_files_to_change()
 
     logger.info("Generating PR...")
-    pull_request = generate_pull_request(chatGPT)
+    # pull_request = generate_pull_request(sweep_bot)ChatGPT
+    pull_request = sweep_bot.generate_pull_request()
 
     logger.info("Making PR...")
     pull_request.branch_name = "sweep/" + pull_request.branch_name[:250]
@@ -100,7 +100,7 @@ def on_ticket(
     create_branch(repo, pull_request)
 
     commit_files_to_github(
-        file_change_requests, repo, chatGPT, pull_request.branch_name
+        file_change_requests, repo, sweep_bot, pull_request.branch_name
     )
 
     repo.create_pull(
