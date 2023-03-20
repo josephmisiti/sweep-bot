@@ -5,7 +5,7 @@ from github.GithubException import GithubException
 from pydantic import BaseModel
 
 
-from src.common.models import (
+from src.core.models import (
     ChatGPT,
     FileChange,
     FileChangeRequest,
@@ -13,7 +13,7 @@ from src.common.models import (
     PullRequest,
     RegexMatchError,
 )
-from src.common.prompts import (
+from src.core.prompts import (
     files_to_change_prompt,
     pull_request_prompt,
     create_file_prompt,

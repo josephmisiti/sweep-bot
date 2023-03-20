@@ -10,12 +10,12 @@ import openai
 from loguru import logger
 from github import Github
 
-from src.common.prompts import (
+from src.core.prompts import (
     system_message_prompt,
     human_message_prompt,
     reply_prompt,
 )
-from src.common.sweep_bot import SweepBot
+from src.core.sweep_bot import SweepBot
 from src.utils.github_utils import get_relevant_directories
 
 github_access_token = os.environ.get("GITHUB_TOKEN")

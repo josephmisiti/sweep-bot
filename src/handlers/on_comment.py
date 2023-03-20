@@ -8,8 +8,8 @@ import openai
 from loguru import logger
 from github import Github, UnknownObjectException
 
-from src.common.models import ChatGPT, FileChange, PullRequest
-from src.common.prompts import (
+from src.core.models import ChatGPT, FileChange, PullRequest
+from src.core.prompts import (
     pr_code_prompt,
     pull_request_prompt,
 )
