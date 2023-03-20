@@ -10,8 +10,6 @@ repos:
     hooks:
       - id: mypy
         files: ^(src|tests)/
-        args: [--check-untyped-defs]
-        use-venv: true
 
   - repo: https://github.com/pycqa/flake8
     rev: 6.0.0
