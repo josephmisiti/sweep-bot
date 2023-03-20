@@ -21,7 +21,11 @@ handle_comment = stub.function(image=image, secrets=secrets)(on_comment)
 @stub.webhook(method="POST", image=image, secrets=secrets)
 def handle_ticket_webhook(request: IssueRequest):
     # TODO: use pydantic
-    if request.issue is not None and request.action == "opened" and "sweepaibot" in [assignee.login for assignee in request.issue.assignees]:
+    if (
+        request.issue is not None
+        and request.action == "opened"
+        and "sweepaibot" in [assignee.login for assignee in request.issue.assignees]
+    ):
         if request.issue.body is None:
             request.issue.body = ""
         if request.repository.description is None:
