@@ -2,6 +2,8 @@
 On Github ticket, get ChatGPT to deal with it
 """
 
+# TODO: Add file validation
+
 import os
 import openai
 
@@ -9,11 +11,14 @@ from loguru import logger
 from github import Github
 
 from src.chains.on_ticket_models import (
+    Message,
     ChatGPT,
     PullRequest,
 )
 from src.chains.on_ticket_prompts import (
+    system_message_prompt,
     human_message_prompt,
+    reply_prompt,
     pr_text_prompt,
 )
 from src.utils.code_utils import commit_files_to_github, get_files_from_chatgpt
@@ -28,12 +33,6 @@ bot_suffix = "I'm a bot that handles simple bugs and feature requests\
 but I might make mistakes. Please be kind!"
 
 
-# Flow:
-# 1. Get relevant files
-# 2: Get human message
-# 3. Get files to change
-# 4. Get file changes
-# 5. Create PR
 def on_ticket(
     title: str,
     summary: str,
@@ -44,6 +43,12 @@ def on_ticket(
     repo_description: str,
     relevant_files: str = "",
 ):
+    # Flow:
+    # 1. Get relevant files
+    # 2: Get human message
+    # 3. Get files to change
+    # 4. Get file changes
+    # 5. Create PR
     logger.info(
         "Calling on_ticket() with the following arguments: {title}, {summary}, {issue_number}, {issue_url}, {username}, {repo_full_name}, {repo_description}, {relevant_files}",
         title=title,
@@ -73,30 +78,38 @@ def on_ticket(
         relevant_directories=relevant_directories,
         relevant_files=relevant_files,
     )
-    chatGPT = ChatGPT(model="gpt-3.5-turbo")
-    reply = chatGPT.chat(human_message)
+    chatGPT = ChatGPT(
+        model="gpt-3.5-turbo",
+        messages=[
+            Message(
+                role="system", content=system_message_prompt + "\n\n" + human_message
+            )
+        ],
+    )
+    reply = chatGPT.chat(reply_prompt)
+    chatGPT.undo()  # not doing it sometimes causes problems: the bot thinks it has already has done the fixes
 
     logger.info("Sending response...")
     repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
 
-    # TODO: abstractify this process
-
     logger.info("Fetching files to modify/create...")
-
     file_change_requests = get_files_from_chatgpt(chatGPT=chatGPT)
 
     logger.info("Generating PR...")
     pull_request = None
-    count = 0
-    while not pull_request:
-        count += 1
-        logger.info(f"Generating for the {count}th time...")
-        pr_text_response = chatGPT.chat(pr_text_prompt)
+    for count in range(5):
+        if pull_request:
+            break
         try:
+            logger.info(f"Generating for the {count}th time...")
+            pr_text_response = chatGPT.chat(pr_text_prompt)
             pull_request = PullRequest.from_string(pr_text_response)
         except Exception:
+            logger.info("Failed to parse! Retrying...")
             chatGPT.undo()
             continue
+    else:
+        raise Exception("Could not generate PR text")
 
     logger.info("Making PR...")
     base_branch = repo.get_branch(repo.default_branch)

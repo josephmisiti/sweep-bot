@@ -71,6 +71,10 @@ class ChatGPT(BaseModel):
         return self.messages
 
 
+class RegexMatchError(ValueError):
+    pass
+
+
 class RegexMatchableBaseModel(BaseModel):
     _regex: ClassVar[str]
 
@@ -79,15 +83,18 @@ class RegexMatchableBaseModel(BaseModel):
         # match = re.search(file_regex, string, re.DOTALL)
         match = re.search(cls._regex, string, re.DOTALL)
         if match is None:
-            raise ValueError("Did not match")
-        return cls(**{k: v.strip() for k, v in match.groupdict().items()}, **kwargs)
+            raise RegexMatchError("Did not match")
+        return cls(
+            **{k: (v if v else "").strip() for k, v in match.groupdict().items()},
+            **kwargs,
+        )
 
 
 class FilesToChange(RegexMatchableBaseModel):
     files_to_modify: str
     files_to_create: str
     _regex = (
-        r"""Thoughts:.*Create:(?P<files_to_modify>.*)Modify:(?P<files_to_create>.*)"""
+        r"""Thoughts:.*Create:(?P<files_to_create>.*)Modify:(?P<files_to_modify>.*)"""
     )
 
 

@@ -16,17 +16,19 @@ Relevant Related Files:
 ```
 {relevant_files}
 ```
-
-Write a short response to this user. Tell them you will be working on it this PR asap and a rough summary of how you will work on it. End with "Give me a minute!".
 """
 
+reply_prompt = """Write a short response to this user. Tell them you will be working on it this PR asap and a rough summary of how you will work on it. End with "Give me a minute!"."""
+
 files_to_change_prompt = """
-Provide a list of files you would like to modify or create with brief instructions on what to modify, in few sentences. The list of files to create or modify may be empty: just leave the header with "* None". Format:
+Provide a list of files you would like to modify or create with brief instructions on what to modify, in one line. The list of files to create or modify may be empty, but you MUST leave the header with a single list element with "* None". There MUST be both a Create and a Modify header. Format:
 
 Thoughts: {thoughts}
+
 Create:
 * `{filename_1}`: {instructions_1}
 * `{filename_2}`: {instructions_2}
+
 Modify:
 * `{filename_3}`: {instructions_3}
 * `{filename_4}`: {instructions_4}

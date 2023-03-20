@@ -3,6 +3,7 @@ from github import Repository
 from loguru import logger
 from src.chains.on_ticket_models import (
     ChatGPT,
+    RegexMatchError,
     FileChange,
     FileChangeRequest,
     FilesToChange,
@@ -16,17 +17,16 @@ from src.chains.on_ticket_prompts import (
 
 def get_files_from_chatgpt(chatGPT: ChatGPT):
     file_change_requests: list[FileChangeRequest] = []
-    count = 0
-
-    while not file_change_requests:
-        count += 1
-        logger.info(f"Generating for the {count}th time...")
-        files_to_change_response = chatGPT.chat(files_to_change_prompt)
+    for count in range(5):
+        if file_change_requests:
+            break
         try:
+            logger.info(f"Generating for the {count}th time...")
+            files_to_change_response = chatGPT.chat(files_to_change_prompt)
             files_to_change = FilesToChange.from_string(files_to_change_response)
             files_to_create: list[str] = files_to_change.files_to_create.split("*")
             files_to_modify: list[str] = files_to_change.files_to_modify.split("*")
-            logger.debug(file_change_requests)
+            logger.debug(files_to_change)
             for file_change_request, change_type in zip(
                 files_to_create + files_to_modify,
                 ["create"] * len(files_to_create) + ["modify"] * len(files_to_modify),
@@ -35,18 +35,17 @@ def get_files_from_chatgpt(chatGPT: ChatGPT):
                 if not file_change_request or file_change_request == "None":
                     continue
                 logger.debug(file_change_request, change_type)
-                try:
-                    file_change_requests.append(
-                        FileChangeRequest.from_string(
-                            file_change_request, change_type=change_type
-                        )
+                file_change_requests.append(
+                    FileChangeRequest.from_string(
+                        file_change_request, change_type=change_type
                     )
-                except Exception:
-                    chatGPT.undo()
-                    continue
-        except Exception:
+                )
+        except RegexMatchError:
+            logger.info("Failed to parse! Retrying...")
             chatGPT.undo()
             continue
+    else:
+        raise Exception("Could not generate files to change")
     return file_change_requests
 
 
@@ -56,6 +55,7 @@ def commit_files_to_github(
     chatGPT: ChatGPT,
     branch_name: str,
 ):
+    logger.debug(file_change_requests)
     for file in file_change_requests:
         if file.change_type == "create":
             file_change = None
