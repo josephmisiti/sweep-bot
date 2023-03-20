@@ -5,7 +5,7 @@ import openai
 from loguru import logger
 from pydantic import BaseModel
 
-from src.chains.on_ticket_prompts import system_message_prompt
+from src.core.prompts import system_message_prompt
 
 
 ChatModel = Literal["gpt-3.5-turbo"] | Literal["gpt-4"]
@@ -24,12 +24,15 @@ class ChatGPT(BaseModel):
     messages: list[Message] = [
         Message(
             role="system",
-            # content="You are a helpful assistant software developer.",
             content=system_message_prompt,
         )
     ]
     prev_message_states: list[list[Message]] = []
     model: ChatModel = "gpt-4"
+
+    @classmethod
+    def from_system_message_content(cls, content: str, **kwargs) -> Self:
+        return cls(messages=[Message(role="system", content=content)], **kwargs)
 
     def chat(self, content: str, model: ChatModel | None = None):
         self.prev_message_states.append(self.messages)

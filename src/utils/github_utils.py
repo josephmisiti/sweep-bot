@@ -1,18 +1,9 @@
 import re
-from github.Repository import Repository
 
 
 def make_valid_string(string: str):
     pattern = r"[^\w./-]+"
     return re.sub(pattern, "_", string)
-
-
-def check_file_exists(repo: Repository, file_path: str) -> bool:
-    try:
-        repo.get_contents(file_path)
-        return True
-    except Exception:
-        return False
 
 
 def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:

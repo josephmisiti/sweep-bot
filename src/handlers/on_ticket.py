@@ -10,19 +10,13 @@ import openai
 from loguru import logger
 from github import Github
 
-from src.chains.on_ticket_models import (
-    Message,
-    ChatGPT,
-    PullRequest,
-)
-from src.chains.on_ticket_prompts import (
+from src.core.prompts import (
     system_message_prompt,
     human_message_prompt,
     reply_prompt,
-    pr_text_prompt,
 )
-from src.utils.code_utils import commit_files_to_github, get_files_from_chatgpt
-from src.utils.github_utils import get_relevant_directories, make_valid_string
+from src.core.sweep_bot import SweepBot
+from src.utils.github_utils import get_relevant_directories
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
@@ -49,6 +43,7 @@ def on_ticket(
     # 3. Get files to change
     # 4. Get file changes
     # 5. Create PR
+
     logger.info(
         "Calling on_ticket() with the following arguments: {title}, {summary}, {issue_number}, {issue_url}, {username}, {repo_full_name}, {repo_description}, {relevant_files}",
         title=title,
@@ -78,58 +73,30 @@ def on_ticket(
         relevant_directories=relevant_directories,
         relevant_files=relevant_files,
     )
-    chatGPT = ChatGPT(
-        model="gpt-3.5-turbo",
-        messages=[
-            Message(
-                role="system", content=system_message_prompt + "\n\n" + human_message
-            )
-        ],
+    sweep_bot = SweepBot.from_system_message_content(
+        system_message_prompt + "\n\n" + human_message, model="gpt-3.5-turbo", repo=repo
     )
-    reply = chatGPT.chat(reply_prompt)
-    chatGPT.undo()  # not doing it sometimes causes problems: the bot thinks it has already has done the fixes
+    reply = sweep_bot.chat(reply_prompt)
+    sweep_bot.undo()  # not doing it sometimes causes problems: the bot thinks it has already has done the fixes
 
     logger.info("Sending response...")
     repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
 
     logger.info("Fetching files to modify/create...")
-    file_change_requests = get_files_from_chatgpt(chatGPT=chatGPT)
+    file_change_requests = sweep_bot.get_files_to_change()
 
     logger.info("Generating PR...")
-    pull_request = None
-    for count in range(5):
-        if pull_request:
-            break
-        try:
-            logger.info(f"Generating for the {count}th time...")
-            pr_text_response = chatGPT.chat(pr_text_prompt)
-            pull_request = PullRequest.from_string(pr_text_response)
-        except Exception:
-            logger.info("Failed to parse! Retrying...")
-            chatGPT.undo()
-            continue
-    else:
-        raise Exception("Could not generate PR text")
+    pull_request = sweep_bot.generate_pull_request()
 
     logger.info("Making PR...")
-    base_branch = repo.get_branch(repo.default_branch)
-    branch_name = make_valid_string("sweep/" + pull_request.branch_name[:250])
-    try:
-        repo.create_git_ref(f"refs/heads/{branch_name}", base_branch.commit.sha)
-    except Exception as e:
-        logger.error(f"Error: {e}")
 
-    commit_files_to_github(
-        file_change_requests=file_change_requests,
-        repo=repo,
-        chatGPT=chatGPT,
-        branch_name=branch_name,
-    )
+    pull_request.branch_name = sweep_bot.create_branch(pull_request.branch_name)
+    sweep_bot.change_files_in_github(file_change_requests, pull_request.branch_name)
 
     repo.create_pull(
         title=pull_request.title,
         body=pull_request.content,  # link back to issue
-        head=branch_name,
+        head=pull_request.branch_name,
         base=repo.default_branch,
     )
 

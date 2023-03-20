@@ -34,7 +34,7 @@ class IssueRequest(BaseModel):
         class User(BaseModel):
             login: str
 
-        class Assignees(BaseModel):
+        class Assignee(BaseModel):
             login: str
 
         title: str
@@ -42,7 +42,7 @@ class IssueRequest(BaseModel):
         html_url: str
         user: User
         body: str | None
-        assignees: list[Assignees]
+        assignees: list[Assignee]
 
     class Repository(BaseModel):
         full_name: str
@@ -51,3 +51,4 @@ class IssueRequest(BaseModel):
     action: str
     issue: Issue | None
     repository: Repository
+    assignee: Issue.Assignee

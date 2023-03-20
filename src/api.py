@@ -1,6 +1,7 @@
+from loguru import logger
 import modal  # type: ignore
-from src.chains.on_ticket import on_ticket
-from src.chains.on_comment import on_comment
+from src.handlers.on_ticket import on_ticket
+from src.handlers.on_comment import on_comment
 from src.events import CommentCreatedEvent, IssueRequest
 
 stub = modal.Stub("handle-ticket")
@@ -20,9 +21,13 @@ handle_comment = stub.function(image=image, secrets=secrets)(on_comment)
 
 @stub.webhook(method="POST", image=image, secrets=secrets)
 def handle_ticket_webhook(request: IssueRequest):
-    # TODO: use pydantic
+    logger.info("handle_ticket_webhook called!")
     if (
         request.issue is not None
+        and (
+            request.action == "opened"
+            or (request.action == "assigned" and request.assignee.login == "sweepaibot")
+        )
         and request.issue.assignees
         and "sweepaibot" in [assignee.login for assignee in request.issue.assignees]
     ):
