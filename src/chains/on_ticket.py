@@ -2,6 +2,8 @@
 On Github ticket, get ChatGPT to deal with it
 """
 
+# TODO: Add file validation
+
 import os
 import openai
 
@@ -9,14 +11,18 @@ from loguru import logger
 from github import Github
 
 from src.chains.on_ticket_models import (
+    Message,
     ChatGPT,
     FileChange,
     FileChangeRequest,
     FilesToChange,
     PullRequest,
+    RegexMatchError,
 )
 from src.chains.on_ticket_prompts import (
+    system_message_prompt,
     human_message_prompt,
+    reply_prompt,
     pr_text_prompt,
     files_to_change_prompt,
     create_file_prompt,
@@ -72,8 +78,16 @@ def on_ticket(
         relevant_directories=relevant_directories,
         relevant_files=relevant_files,
     )
-    chatGPT = ChatGPT(model="gpt-3.5-turbo")
-    reply = chatGPT.chat(human_message)
+    chatGPT = ChatGPT(
+        model="gpt-3.5-turbo",
+        messages=[
+            Message(
+                role="system", content=system_message_prompt + "\n\n" + human_message
+            )
+        ],
+    )
+    reply = chatGPT.chat(reply_prompt)
+    chatGPT.undo()  # not doing it sometimes causes problems: the bot thinks it has already done this
 
     logger.info("Sending response...")
     repo.get_issue(number=issue_number).create_comment(reply + "\n\n---\n" + bot_suffix)
@@ -81,19 +95,18 @@ def on_ticket(
     # TODO: abstractify this process
 
     logger.info("Fetching files to modify/create...")
-
     file_change_requests: list[FileChangeRequest] = []
-    count = 0
 
-    while not file_change_requests:
-        count += 1
-        logger.info(f"Generating for the {count}th time...")
-        files_to_change_response = chatGPT.chat(files_to_change_prompt)
+    for count in range(5):
+        if file_change_requests:
+            break
         try:
+            logger.info(f"Generating for the {count}th time...")
+            files_to_change_response = chatGPT.chat(files_to_change_prompt)
             files_to_change = FilesToChange.from_string(files_to_change_response)
             files_to_create: list[str] = files_to_change.files_to_create.split("*")
             files_to_modify: list[str] = files_to_change.files_to_modify.split("*")
-            logger.debug(file_change_requests)
+            logger.debug(files_to_change)
             for file_change_request, change_type in zip(
                 files_to_create + files_to_modify,
                 ["create"] * len(files_to_create) + ["modify"] * len(files_to_modify),
@@ -102,31 +115,34 @@ def on_ticket(
                 if not file_change_request or file_change_request == "None":
                     continue
                 logger.debug(file_change_request, change_type)
-                try:
-                    file_change_requests.append(
-                        FileChangeRequest.from_string(
-                            file_change_request, change_type=change_type
-                        )
+                file_change_requests.append(
+                    FileChangeRequest.from_string(
+                        file_change_request, change_type=change_type
                     )
-                except Exception:
-                    chatGPT.undo()
-                    continue
-        except Exception:
+                )
+        except RegexMatchError:
+            logger.info("Failed to parse! Retrying...")
             chatGPT.undo()
             continue
+    else:
+        raise Exception("Could not generate files to change")
 
     logger.info("Generating PR...")
     pull_request = None
-    count = 0
-    while not pull_request:
+    for count in range(5):
+        if pull_request:
+            break
         count += 1
-        logger.info(f"Generating for the {count}th time...")
-        pr_text_response = chatGPT.chat(pr_text_prompt)
         try:
+            logger.info(f"Generating for the {count}th time...")
+            pr_text_response = chatGPT.chat(pr_text_prompt)
             pull_request = PullRequest.from_string(pr_text_response)
         except Exception:
+            logger.info("Failed to parse! Retrying...")
             chatGPT.undo()
             continue
+    else:
+        raise Exception("Could not generate PR text")
 
     logger.info("Making PR...")
     base_branch = repo.get_branch(repo.default_branch)
@@ -137,6 +153,7 @@ def on_ticket(
         logger.error(f"Error: {e}")
 
     count = 0
+    logger.debug(file_change_requests)
     for file in file_change_requests:
         if file.change_type == "create":
             file_change = None
