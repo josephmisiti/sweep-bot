@@ -1,7 +1,7 @@
 from github import Repository
 
 from loguru import logger
-from src.chains.on_ticket_models import (
+from src.common.models import (
     ChatGPT,
     RegexMatchError,
     FileChange,
@@ -9,13 +9,12 @@ from src.chains.on_ticket_models import (
     FilesToChange,
     PullRequest,
 )
-from src.chains.on_ticket_prompts import (
+from src.common.prompts import (
     files_to_change_prompt,
     create_file_prompt,
     modify_file_prompt,
     pull_request_prompt,
 )
-from src.utils.github_utils import make_valid_string
 
 
 def get_files_from_chatgpt(chatGPT: ChatGPT):
@@ -44,7 +43,7 @@ def get_files_from_chatgpt(chatGPT: ChatGPT):
                     )
                 )
         except RegexMatchError:
-            logger.info("Failed to parse! Retrying...")
+            logger.warning("Failed to parse! Retrying...")
             chatGPT.undo()
             continue
     raise Exception("Could not generate files to change")
@@ -54,26 +53,27 @@ def generate_pull_request(chatGPT: ChatGPT):
     pull_request = None
     for count in range(5):
         if pull_request:
-            break
+            return pull_request
         try:
             logger.info(f"Generating for the {count}th time...")
             pr_text_response = chatGPT.chat(pull_request_prompt)
             pull_request = PullRequest.from_string(pr_text_response)
         except Exception:
-            logger.info("Failed to parse! Retrying...")
+            logger.warning("Failed to parse! Retrying...")
             chatGPT.undo()
             continue
-    else:
-        raise Exception("Could not generate PR text")
+    raise Exception("Could not generate PR text")
 
 
 def create_branch(repo: Repository, pull_request: PullRequest):
     base_branch = repo.get_branch(repo.default_branch)
-    branch_name = make_valid_string("sweep/" + pull_request.branch_name[:250])
     try:
-        repo.create_git_ref(f"refs/heads/{branch_name}", base_branch.commit.sha)
+        repo.create_git_ref(
+            f"refs/heads/{pull_request.branch_name}", base_branch.commit.sha
+        )
     except Exception as e:
         logger.error(f"Error: {e}")
+        raise e
 
 
 def commit_files_to_github(
@@ -96,6 +96,7 @@ def commit_files_to_github(
                 try:
                     file_change = FileChange.from_string(create_file_response)
                 except Exception:
+                    logger.warning("Failed to parse. Retrying...")
                     chatGPT.undo()
                     continue
             commit_message = f"sweep: {file_change.commit_message[:50]}"
@@ -119,6 +120,7 @@ def commit_files_to_github(
                 try:
                     file_change = FileChange.from_string(modify_file_response)
                 except Exception:
+                    logger.warning("Failed to parse. Retrying...")
                     chatGPT.undo()
                     continue
             commit_message = f"sweep: {file_change.commit_message[:50]}"

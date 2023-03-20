@@ -10,13 +10,13 @@ import openai
 from loguru import logger
 from github import Github
 
-from src.chains.on_ticket_models import ChatGPT
-from src.chains.on_ticket_prompts import (
+from src.common.models import ChatGPT
+from src.common.prompts import (
     system_message_prompt,
     human_message_prompt,
     reply_prompt,
 )
-from src.utils.code_utils import (
+from src.common.code_utils import (
     commit_files_to_github,
     create_branch,
     generate_pull_request,
