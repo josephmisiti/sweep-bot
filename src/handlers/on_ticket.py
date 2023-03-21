@@ -61,8 +61,8 @@ def on_ticket(
 
     logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
     repo = g.get_repo(repo_full_name)
-    src_contents = repo.get_contents("/")
-    relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
+    # src_contents = repo.get_contents("/")
+    relevant_directories, relevant_files = get_relevant_directories_remote(title, num_files=1)  # type: ignore
 
     logger.info("Getting response from ChatGPT...")
     human_message = human_message_prompt.format(
