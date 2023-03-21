@@ -50,6 +50,7 @@ class IssueRequest(BaseModel):
         html_url: str
         user: User
         body: str | None
+        labels: list[str]
         assignees: list[Assignee]
 
     action: str

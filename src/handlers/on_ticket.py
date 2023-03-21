@@ -16,7 +16,7 @@ from src.core.prompts import (
     reply_prompt,
 )
 from src.core.sweep_bot import SweepBot
-from src.utils.github_utils import get_relevant_directories, get_github_client
+from src.utils.github_utils import get_relevant_directories_remote, get_github_client
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")

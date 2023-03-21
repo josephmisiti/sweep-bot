@@ -42,6 +42,7 @@ async def handle_ticket_webhook(raw_request: Request):
                             and request.assignee is not None
                             and request.assignee.login == "sweepaibot"
                         )
+                        or "sweep" in [label.lower() for label in request.issue.labels]
                     )
                     and request.issue.assignees
                     and "sweepaibot"
@@ -72,6 +73,8 @@ async def handle_ticket_webhook(raw_request: Request):
             #         request.repository.full_name,
             #         request.repository.description,
             #     )
+            case "installation", "created":
+                pass
             case "ping", None:
                 return {"message": "pong"}
             case _:
