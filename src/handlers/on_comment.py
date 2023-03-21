@@ -14,7 +14,7 @@ from src.core.prompts import (
     pull_request_prompt,
 )
 
-from src.utils.github_utils import get_relevant_directories, make_valid_string
+from src.utils.github_utils import get_relevant_directories_remote, make_valid_string
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
@@ -35,8 +35,8 @@ def on_comment(
     _, repo_name = repo_full_name.split("/")
 
     repo = g.get_repo(repo_full_name)
-    src_contents = repo.get_contents("src", ref=ref)
-    relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
+    # src_contents = repo.get_contents("src", ref=ref)
+    relevant_directories, relevant_files = get_relevant_directories_remote(title)  # type: ignore
 
     chatGPT = ChatGPT()
     parsed_files: list[FileChange] = []

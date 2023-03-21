@@ -890,13 +890,13 @@ files = [
 
 [[package]]
 name = "modal-client"
-version = "0.48.1638"
+version = "0.48.1649"
 description = "Python client library for Modal"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "modal_client-0.48.1638-py3-none-any.whl", hash = "sha256:53103d6a05e8be81ededd8554050c643a90f16ca4600d6ef72d46cb6a443c614"},
+    {file = "modal_client-0.48.1649-py3-none-any.whl", hash = "sha256:c66b13fa26d9273d9471431b20ff16a2ae03d91361707366d03a7714418e55a5"},
 ]
 
 [package.dependencies]
@@ -908,7 +908,7 @@ click = ">=8.1.0"
 cloudpickle = {version = ">=2.2.0,<2.3.0", markers = "python_version >= \"3.11\""}
 fastapi = "*"
 grpclib = "0.4.3"
-importlib-metadata = "*"
+importlib-metadata = ">=3.6.0"
 protobuf = ">=3.19,<5.0"
 rich = ">=12.0.0"
 synchronicity = ">=0.2.14"
@@ -2198,4 +2198,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "ad97e0d74b358d668b86155fe0e1214268847467b51bc9752c61f717eff92d7c"
+content-hash = "5090f22dccbe6284713f1aec3d5eba320dd475f784cf5b8dec0cae48bf18e2d5"
