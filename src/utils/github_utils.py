@@ -1,9 +1,42 @@
+import os
+import time
 import re
+from github import Github
+
+from jwt import encode
+import requests  # type: ignore
 
 
 def make_valid_string(string: str):
     pattern = r"[^\w./-]+"
     return re.sub(pattern, "_", string)
+
+
+def get_jwt():
+    signing_key = os.environ["GITHUB_APP_PEM"]
+    app_id = "307814"
+    payload = {"iat": int(time.time()), "exp": int(time.time()) + 600, "iss": app_id}
+
+    return encode(payload, signing_key, algorithm="RS256")
+
+
+def get_token(installation_id: int):
+    jwt = get_jwt()
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer " + jwt,
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    response = requests.post(
+        f"https://api.github.com/app/installations/{installation_id}/access_tokens",
+        headers=headers,
+    )
+    return response.json()["token"]
+
+
+def get_github_client(installation_id: int):
+    token = get_token(installation_id)
+    return Github(token)
 
 
 def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:

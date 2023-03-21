@@ -1,7 +1,11 @@
 from pydantic import BaseModel
 
 
-class CommentCreatedEvent(BaseModel):
+class Installation(BaseModel):
+    id: str
+
+
+class CommentCreatedRequest(BaseModel):
     class Comment(BaseModel):
         body: str
         position: int
@@ -37,6 +41,10 @@ class IssueRequest(BaseModel):
         class Assignee(BaseModel):
             login: str
 
+        class Repository(BaseModel):
+            full_name: str
+            description: str | None
+
         title: str
         number: int
         html_url: str
@@ -44,11 +52,8 @@ class IssueRequest(BaseModel):
         body: str | None
         assignees: list[Assignee]
 
-    class Repository(BaseModel):
-        full_name: str
-        description: str | None
-
     action: str
-    issue: Issue | None
-    repository: Repository
-    assignee: Issue.Assignee
+    issue: Issue
+    repository: Issue.Repository
+    assignee: Issue.Assignee | None
+    installation: Installation

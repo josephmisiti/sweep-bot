@@ -1,11 +1,13 @@
 import re
-from typing import ClassVar, Literal, Self, Type
+from typing import ClassVar, Literal, Any, Type
 
 import openai
 from loguru import logger
 from pydantic import BaseModel
 
 from src.core.prompts import system_message_prompt
+
+Self = Any
 
 
 ChatModel = Literal["gpt-3.5-turbo"] | Literal["gpt-4"]

@@ -16,7 +16,7 @@ from src.core.prompts import (
     reply_prompt,
 )
 from src.core.sweep_bot import SweepBot
-from src.utils.github_utils import get_relevant_directories
+from src.utils.github_utils import get_relevant_directories, get_github_client
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
@@ -35,6 +35,7 @@ def on_ticket(
     username: str,
     repo_full_name: str,
     repo_description: str,
+    installation_id: int,
     relevant_files: str = "",
 ):
     # Flow:
@@ -55,6 +56,7 @@ def on_ticket(
         repo_description=repo_description,
         relevant_files=relevant_files,
     )
+    g = get_github_client(installation_id)
     _org_name, repo_name = repo_full_name.split("/")
 
     logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
