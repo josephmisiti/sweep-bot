@@ -59,5 +59,8 @@ def handle_comment_webhook(comment: CommentCreatedEvent):
         branch_name=comment.pull_request.head.ref,
         comment=comment.comment.body,
         path=comment.comment.path,
+        pr_title=comment.pull_request.title,
+        pr_body=comment.pull_request.body,
+        pr_line_position=comment.comment.original_line,
     )
     return {"success": True}

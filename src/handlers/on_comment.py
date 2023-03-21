@@ -19,9 +19,6 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 g = Github(github_access_token)
 
-bot_suffix = "I'm a bot that handles simple bugs and feature requests\
-but I might make mistakes. Please be kind!"
-
 
 def on_comment(
     repo_full_name: str,
@@ -29,6 +26,9 @@ def on_comment(
     branch_name: str,
     comment: str,
     path: str,
+    pr_title: str,
+    pr_body: str,
+    pr_line_position: int,
 ):
     # Flow:
     # 1. Get relevant files
@@ -36,7 +36,6 @@ def on_comment(
     # 3. Get files to change
     # 4. Get file changes
     # 5. Create PR
-    return {"success": True}
     logger.info(
         "Calling on_comment() with the following arguments: {comment}, {repo_full_name}, {repo_description}, {branch_name}, {path}",
         comment=comment,
@@ -44,13 +43,24 @@ def on_comment(
         repo_description=repo_description,
         branch_name=branch_name,
         path=path,
+        pr_title=pr_title,
+        pr_body=pr_body,
     )
     _, repo_name = repo_full_name.split("/")
 
     logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
     repo = g.get_repo(repo_full_name)
-    src_contents = repo.get_contents("/")
+    src_contents = repo.get_contents("/", ref=branch_name)
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
+    # Gets the exact line that the comment happened on
+    pr_file = (
+        repo.get_contents(path, ref=branch_name)
+        .decoded_content.decode("utf-8")
+        .splitlines()
+    )
+    logger.info("PR File: {pr_file}", pr_file=pr_file)
+    pr_line = pr_file[pr_line_position - 1]
+    logger.info("PR Line: {pr_line}", pr_line=pr_line)
 
     logger.info("Getting response from ChatGPT...")
     human_message = human_message_prompt_comment.format(
@@ -60,7 +70,11 @@ def on_comment(
         path=path,
         relevant_directories=relevant_directories,
         relevant_files=relevant_files,
+        pr_title=pr_title,
+        pr_body=pr_body,
+        pr_line=pr_line,
     )
+
     sweep_bot = SweepBot.from_system_message_content(
         system_message_prompt + "\n\n" + human_message, model="gpt-3.5-turbo", repo=repo
     )

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class CommentCreatedEvent(BaseModel):
     class Comment(BaseModel):
         body: str
-        position: int
+        original_line: int
         path: str
 
     class PullRequest(BaseModel):
@@ -14,6 +14,7 @@ class CommentCreatedEvent(BaseModel):
         body: str
         state: str  # "closed" or "open"
         head: Head
+        title: str
 
     class Repository(BaseModel):
         full_name: str

@@ -24,7 +24,9 @@ Relevant Related Files:
 # Prompt for comments
 human_message_prompt_comment = """
 Repo: {repo_name}: {repo_description}
-User Request: {comment} in this file: {path}
+Pull Request Title: {pr_title}
+Pull Request Description: {pr_body}
+User Request: {comment} in this file: {path} on this line: {pr_line}
 
 Relevant Directories:
 {relevant_directories}
