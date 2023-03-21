@@ -62,17 +62,18 @@ async def handle_ticket_webhook(raw_request: Request):
                         request.repository.description,
                         request.installation.id,
                     )
-            # case "pull_request_review_comment", "created":
-            #     request = CommentCreatedRequest(**request_dict)
-            #     handle_comment.spawn(
-            #         request.issue.title,
-            #         request.issue.body,
-            #         request.issue.number,
-            #         request.issue.html_url,
-            #         request.issue.user.login,
-            #         request.repository.full_name,
-            #         request.repository.description,
-            #     )
+            case "pull_request_review_comment", "created":
+                comment = CommentCreatedRequest(**request_dict)
+                handle_comment.spawn(
+                    repo_full_name=comment.repository.full_name,
+                    repo_description=comment.repository.description,
+                    branch_name=comment.pull_request.head.ref,
+                    comment=comment.comment.body,
+                    path=comment.comment.path,
+                    pr_title=comment.pull_request.title,
+                    pr_body=comment.pull_request.body,
+                    pr_line_position=comment.comment.original_line,
+                )
             case "installation", "created":
                 pass
             case "ping", None:

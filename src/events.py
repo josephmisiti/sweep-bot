@@ -8,7 +8,7 @@ class Installation(BaseModel):
 class CommentCreatedRequest(BaseModel):
     class Comment(BaseModel):
         body: str
-        position: int
+        original_line: int
         path: str
 
     class PullRequest(BaseModel):
@@ -18,6 +18,7 @@ class CommentCreatedRequest(BaseModel):
         body: str
         state: str  # "closed" or "open"
         head: Head
+        title: str
 
     class Repository(BaseModel):
         full_name: str
