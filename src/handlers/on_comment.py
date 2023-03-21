@@ -2,105 +2,74 @@
 On Github ticket, get ChatGPT to deal with it
 """
 
+# TODO: Add file validation
+
 import os
 import openai
 
 from loguru import logger
-from github import Github, UnknownObjectException
+from github import Github
 
-from src.core.models import ChatGPT, FileChange, PullRequest
-from src.core.prompts import (
-    pr_code_prompt,
-    pull_request_prompt,
-)
-
-from src.utils.github_utils import get_relevant_directories, make_valid_string
+from src.core.prompts import system_message_prompt, human_message_prompt_comment
+from src.core.sweep_bot import SweepBot
+from src.utils.github_utils import get_relevant_directories
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 g = Github(github_access_token)
 
+bot_suffix = "I'm a bot that handles simple bugs and feature requests\
+but I might make mistakes. Please be kind!"
+
 
 def on_comment(
-    title: str,
-    summary: str,
-    issue_number: int,
-    issue_url: str,
-    username: str,
     repo_full_name: str,
     repo_description: str,
-    ref: str,
+    branch_name: str,
+    comment: str,
+    path: str,
 ):
+    # Flow:
+    # 1. Get relevant files
+    # 2: Get human message
+    # 3. Get files to change
+    # 4. Get file changes
+    # 5. Create PR
+
+    logger.info(
+        "Calling on_comment() with the following arguments: {comment}, {repo_full_name}, {repo_description}, {branch_name}, {path}",
+        comment=comment,
+        repo_full_name=repo_full_name,
+        repo_description=repo_description,
+        branch_name=branch_name,
+        path=path,
+    )
     _, repo_name = repo_full_name.split("/")
 
+    logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
     repo = g.get_repo(repo_full_name)
-    src_contents = repo.get_contents("src", ref=ref)
+    src_contents = repo.get_contents("/")
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
 
-    chatGPT = ChatGPT()
-    parsed_files: list[FileChange] = []
-    while not parsed_files:
-        pr_code_response = chatGPT.chat(pr_code_prompt)
-        if pr_code_response:
-            files = pr_code_response.split("File: ")[1:]
-            while files and files[0] == "":
-                files = files[1:]
-            if not files:
-                # TODO(wzeng): Fuse changes back using GPT4
-                parsed_files = []
-                chatGPT.undo()
-                continue
-            for file in files:
-                try:
-                    parsed_file = FileChange.from_string(file)
-                    parsed_files.append(parsed_file)
-                except Exception:
-                    parsed_files = []
-                    chatGPT.undo()
-                    continue
-    logger.info("Accepted ChatGPT result")
-
-    pr_texts: PullRequest | None = None
-    while pr_texts is None:
-        pr_texts_response = chatGPT.chat(pull_request_prompt)
-        try:
-            pr_texts = PullRequest.from_string(pr_texts_response)
-        except Exception:
-            chatGPT.undo()
-
-    branch_name = make_valid_string(
-        f"sweep/Issue_{issue_number}_{make_valid_string(title.strip())}"
-    ).replace(" ", "_")[:250]
-    base_branch = repo.get_branch(repo.default_branch)
-    try:
-        repo.create_git_ref(f"refs/heads/{branch_name}", base_branch.commit.sha)
-    except Exception as e:
-        logger.error(f"Error: {e}")
-
-    for file in parsed_files:
-        commit_message = f"sweep: {file.description[:50]}"
-
-        try:
-            # TODO: check this is single file
-            contents = repo.get_contents(file.filename)
-            assert not isinstance(contents, list)
-            repo.update_file(
-                file.filename,
-                commit_message,
-                file.code,
-                contents.sha,
-                branch=branch_name,
-            )
-        except UnknownObjectException:
-            repo.create_file(
-                file.filename, commit_message, file.code, branch=branch_name
-            )
-
-    repo.create_pull(
-        title=pr_texts.title,
-        body=pr_texts.content,
-        head=branch_name,
-        base=repo.default_branch,
+    logger.info("Getting response from ChatGPT...")
+    human_message = human_message_prompt_comment.format(
+        repo_name=repo_name,
+        repo_description=repo_description,
+        comment=comment,
+        path=path,
+        relevant_directories=relevant_directories,
+        relevant_files=relevant_files,
     )
+    sweep_bot = SweepBot.from_system_message_content(
+        system_message_prompt + "\n\n" + human_message, model="gpt-3.5-turbo", repo=repo
+    )
+
+    logger.info("Fetching files to modify/create...")
+    file_change_requests = sweep_bot.get_files_to_change()
+
+    logger.info("Making Code Changes...")
+    sweep_bot.change_files_in_github(file_change_requests, branch_name)
+
+    logger.info("Done!")
     return {"success": True}

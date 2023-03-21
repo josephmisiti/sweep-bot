@@ -21,6 +21,20 @@ Relevant Related Files:
 ```
 """
 
+# Prompt for comments
+human_message_prompt_comment = """
+Repo: {repo_name}: {repo_description}
+User Request: {comment} in this file: {path}
+
+Relevant Directories:
+{relevant_directories}
+
+Relevant Related Files:
+```
+{relevant_files}
+```
+"""
+
 reply_prompt = """Write a short response to this user. Tell them you have started working on this PR and a rough summary of your plan. End with "Give me a minute!"."""
 
 files_to_change_prompt = """

@@ -55,13 +55,13 @@ def handle_comment_webhook(comment: CommentCreatedEvent):
     print("Branch: ", comment.pull_request.head.ref)
     print("Path: ", comment.comment.path)
     print("Body: ", comment.comment.body)
-    # handle_comment.spawn(
-    #     request.issue.title,
-    #     request.issue.body,
-    #     request.issue.number,
-    #     request.issue.html_url,
-    #     request.issue.user.login,
-    #     request.repository.full_name,
-    #     request.repository.description,
-    # )
+    print("Repo: ", comment.repository.full_name)
+    print("Desc: ", comment.repository.description)
+    handle_comment.spawn(
+        repo_full_name=comment.repository.full_name,
+        repo_description=comment.repository.description,
+        branch_name=comment.pull_request.head.ref,
+        comment=comment.comment.body,
+        path=comment.comment.path,
+    )
     return {"success": True}

@@ -35,7 +35,6 @@ def on_ticket(
     username: str,
     repo_full_name: str,
     repo_description: str,
-    relevant_files: str = "",
 ):
     # Flow:
     # 1. Get relevant files
@@ -45,7 +44,7 @@ def on_ticket(
     # 5. Create PR
 
     logger.info(
-        "Calling on_ticket() with the following arguments: {title}, {summary}, {issue_number}, {issue_url}, {username}, {repo_full_name}, {repo_description}, {relevant_files}",
+        "Calling on_ticket() with the following arguments: {title}, {summary}, {issue_number}, {issue_url}, {username}, {repo_full_name}, {repo_description},",
         title=title,
         summary=summary,
         issue_number=issue_number,
@@ -53,7 +52,6 @@ def on_ticket(
         username=username,
         repo_full_name=repo_full_name,
         repo_description=repo_description,
-        relevant_files=relevant_files,
     )
     _org_name, repo_name = repo_full_name.split("/")
 
