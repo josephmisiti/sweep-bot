@@ -1,8 +1,11 @@
 from loguru import logger
-import modal  # type: ignore
+import modal
+from pydantic import ValidationError  # type: ignore
+
 from src.handlers.on_ticket import on_ticket
 from src.handlers.on_comment import on_comment
-from src.events import CommentCreatedEvent, IssueRequest
+from src.events import CommentCreatedRequest, IssueRequest  # noqa: F401
+from fastapi import HTTPException, Request
 
 stub = modal.Stub("handle-ticket")
 image = (
@@ -20,46 +23,69 @@ handle_comment = stub.function(image=image, secrets=secrets)(on_comment)
 
 
 @stub.webhook(method="POST", image=image, secrets=secrets)
-def handle_ticket_webhook(request: IssueRequest):
-    logger.info("handle_ticket_webhook called!")
-    if (
-        request.issue is not None
-        and (
-            request.action == "opened"
-            or (request.action == "assigned" and request.assignee.login == "sweepaibot")
-        )
-        and request.issue.assignees
-        and "sweepaibot" in [assignee.login for assignee in request.issue.assignees]
-    ):
-        if request.issue.body is None:
-            request.issue.body = ""
-        if request.repository.description is None:
-            request.repository.description = ""
-        handle_ticket.spawn(
-            request.issue.title,
-            request.issue.body,
-            request.issue.number,
-            request.issue.html_url,
-            request.issue.user.login,
-            request.repository.full_name,
-            request.repository.description,
-        )
-    return {"success": True}
-
-
-@stub.webhook(method="POST", image=image, secrets=secrets)
-def handle_comment_webhook(comment: CommentCreatedEvent):
-    # TODO: use pydantic
-    if comment.action != "created":
-        return {"success": True}
-    handle_comment.spawn(
-        repo_full_name=comment.repository.full_name,
-        repo_description=comment.repository.description,
-        branch_name=comment.pull_request.head.ref,
-        comment=comment.comment.body,
-        path=comment.comment.path,
-        pr_title=comment.pull_request.title,
-        pr_body=comment.pull_request.body,
-        pr_line_position=comment.comment.original_line,
-    )
+async def handle_ticket_webhook(raw_request: Request):
+    """Handle a webhook request from GitHub."""
+    try:
+        request_dict = await raw_request.json()
+        logger.info(f"Received request: {request_dict.keys()}")
+        event = raw_request.headers.get("X-GitHub-Event")
+        assert event is not None
+        match event, request_dict.get("action", None):
+            case ("issues", "opened") | ("issues", "assigned"):
+                request = IssueRequest(**request_dict)
+                if (
+                    request.issue is not None
+                    and (
+                        request.action == "opened"
+                        or (
+                            request.action == "assigned"
+                            and request.assignee is not None
+                            and request.assignee.login == "sweepaibot"
+                        )
+                        or "sweep" in [label.lower() for label in request.issue.labels]
+                    )
+                    and request.issue.assignees
+                    and "sweepaibot"
+                    in [assignee.login for assignee in request.issue.assignees]
+                ):
+                    request.issue.body = request.issue.body or ""
+                    request.repository.description = (
+                        request.repository.description or ""
+                    )
+                    handle_ticket.spawn(
+                        request.issue.title,
+                        request.issue.body,
+                        request.issue.number,
+                        request.issue.html_url,
+                        request.issue.user.login,
+                        request.repository.full_name,
+                        request.repository.description,
+                        request.installation.id,
+                    )
+            case "pull_request_review_comment", "created":
+                comment = CommentCreatedRequest(**request_dict)
+                handle_comment.spawn(
+                    repo_full_name=comment.repository.full_name,
+                    repo_description=comment.repository.description,
+                    branch_name=comment.pull_request.head.ref,
+                    comment=comment.comment.body,
+                    path=comment.comment.path,
+                    pr_title=comment.pull_request.title,
+                    pr_body=comment.pull_request.body,
+                    pr_line_position=comment.comment.original_line,
+                    installation_id=comment.installation.id,
+                )
+            case "installation", "created":
+                pass
+            case "ping", None:
+                return {"message": "pong"}
+            case _:
+                logger.error(f"Unhandled event: {event} {request_dict['action']}")
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Unhandled event: {event} {request_dict['action']}",
+                )
+    except ValidationError as e:
+        logger.error(f"Failed to parse request: {e}")
+        raise HTTPException(status_code=422, detail="Failed to parse request")
     return {"success": True}

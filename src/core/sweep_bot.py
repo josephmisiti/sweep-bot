@@ -124,6 +124,7 @@ class SweepBot(CodeGenBot, GithubBot):
             )
             try:
                 file_change = FileChange.from_string(create_file_response)
+                assert file_change is not None
                 file_change.commit_message = f"sweep: {file_change.commit_message[:50]}"
                 return file_change
             except Exception:
@@ -150,6 +151,7 @@ class SweepBot(CodeGenBot, GithubBot):
             )
             try:
                 file_change = FileChange.from_string(modify_file_response)
+                assert file_change is not None
                 file_change.commit_message = f"sweep: {file_change.commit_message[:50]}"
                 return file_change
             except Exception:

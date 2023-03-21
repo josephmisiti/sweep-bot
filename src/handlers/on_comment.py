@@ -8,18 +8,16 @@ import os
 import openai
 
 from loguru import logger
-from github import Github
 
 from src.core.prompts import system_message_prompt, human_message_prompt_comment
 from src.core.sweep_bot import SweepBot
 from src.utils.github_utils import (
+    get_github_client,
     get_relevant_directories,  # get_relevant_directories_remote,
 )
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
-
-g = Github(github_access_token)
 
 
 def on_comment(
@@ -31,6 +29,7 @@ def on_comment(
     pr_title: str,
     pr_body: str,
     pr_line_position: int,
+    installation_id: int,
 ):
     # Flow:
     # 1. Get relevant files
@@ -51,6 +50,7 @@ def on_comment(
     _, repo_name = repo_full_name.split("/")
 
     logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
+    g = get_github_client(installation_id)
     repo = g.get_repo(repo_full_name)
     src_contents = repo.get_contents("/", ref=branch_name)
     relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
