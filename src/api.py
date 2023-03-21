@@ -50,13 +50,9 @@ def handle_ticket_webhook(request: IssueRequest):
 @stub.webhook(method="POST", image=image, secrets=secrets)
 def handle_comment_webhook(comment: CommentCreatedEvent):
     # TODO: use pydantic
-    print("REQ: ", comment)
-    print("Comment: ", comment.comment.body)
-    print("Branch: ", comment.pull_request.head.ref)
-    print("Path: ", comment.comment.path)
-    print("Body: ", comment.comment.body)
-    print("Repo: ", comment.repository.full_name)
-    print("Desc: ", comment.repository.description)
+    print("action: ", comment.action)
+    if comment.action != "created":
+        return {"success": True}
     handle_comment.spawn(
         repo_full_name=comment.repository.full_name,
         repo_description=comment.repository.description,

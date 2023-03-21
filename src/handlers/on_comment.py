@@ -36,7 +36,7 @@ def on_comment(
     # 3. Get files to change
     # 4. Get file changes
     # 5. Create PR
-
+    return {"success": True}
     logger.info(
         "Calling on_comment() with the following arguments: {comment}, {repo_full_name}, {repo_description}, {branch_name}, {path}",
         comment=comment,
