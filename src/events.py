@@ -32,6 +32,7 @@ class CommentCreatedRequest(BaseModel):
     pull_request: PullRequest
     repository: Repository
     sender: Sender
+    installation: Installation
 
 
 class IssueRequest(BaseModel):

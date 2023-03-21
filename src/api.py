@@ -73,6 +73,7 @@ async def handle_ticket_webhook(raw_request: Request):
                     pr_title=comment.pull_request.title,
                     pr_body=comment.pull_request.body,
                     pr_line_position=comment.comment.original_line,
+                    installation_id=comment.installation.id,
                 )
             case "installation", "created":
                 pass
