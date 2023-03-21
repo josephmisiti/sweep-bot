@@ -12,7 +12,9 @@ from github import Github
 
 from src.core.prompts import system_message_prompt, human_message_prompt_comment
 from src.core.sweep_bot import SweepBot
-from src.utils.github_utils import get_relevant_directories, get_relevant_directories_remote
+from src.utils.github_utils import (
+    get_relevant_directories,  # get_relevant_directories_remote,
+)
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
@@ -58,9 +60,7 @@ def on_comment(
         .decoded_content.decode("utf-8")
         .splitlines()
     )
-    logger.info("PR File: {pr_file}", pr_file=pr_file)
     pr_line = pr_file[pr_line_position - 1]
-    logger.info("PR Line: {pr_line}", pr_line=pr_line)
     # src_contents = repo.get_contents("src", ref=ref)
     # relevant_directories, relevant_files = get_relevant_directories_remote(title)  # type: ignore
 

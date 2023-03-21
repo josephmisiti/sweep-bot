@@ -1,4 +1,4 @@
-import requests
+import requests  # type: ignore
 from pydantic import BaseModel
 
 
@@ -9,9 +9,6 @@ class JinaClient(BaseModel):
         super().__init__(url=url)
 
     def search(self, query: str):
-        payload = {
-            "data": [{"text": query}],
-            "parameters": {}
-        }
-        response = requests.post(f'{self.url}/search', json=payload)
+        payload = {"data": [{"text": query}], "parameters": {}}
+        response = requests.post(f"{self.url}/search", json=payload)
         return response.json()
