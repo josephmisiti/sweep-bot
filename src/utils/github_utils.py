@@ -1,4 +1,5 @@
 import re
+from src.utils.jina_utils import JinaClient
 
 
 def make_valid_string(string: str):
@@ -44,4 +45,27 @@ def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:
                         )
 
     # Print the relevant directories and files strings
+    return relevant_directories, relevant_files
+
+
+def get_relevant_directories_remote(query: str, num_files: int = 5) -> tuple[str, str]:
+    # Initialize the relevant directories string
+    relevant_directories = ""
+    relevant_files = '"""'
+    client = JinaClient("https://liberal-pika-72e15321a7.wolf.jina.ai")
+    # filter_tags = {'repository': {'$eq': "sweepai/forked_langchain"}}
+    result = client.search(query)
+    relevant_dirs_set = set()
+    matches = result["data"][0]["matches"][:num_files]
+    for match in matches:
+        file_contents = match["text"]
+        relevant_files += f'"""\n{file_contents}\n"""'
+        file_path = match["tags"]["file_path"]
+        if file_path not in relevant_dirs_set:
+            relevant_dirs_set.add(file_path)
+            relevant_directories += file_path.replace("src/", "") + "\n"
+
+    # Print the relevant directories and files strings
+    print(relevant_directories)
+    print(relevant_files)
     return relevant_directories, relevant_files

@@ -16,7 +16,7 @@ from src.core.prompts import (
     reply_prompt,
 )
 from src.core.sweep_bot import SweepBot
-from src.utils.github_utils import get_relevant_directories
+from src.utils.github_utils import get_relevant_directories_remote
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
@@ -57,8 +57,8 @@ def on_ticket(
 
     logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
     repo = g.get_repo(repo_full_name)
-    src_contents = repo.get_contents("/")
-    relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
+    # src_contents = repo.get_contents("/")
+    relevant_directories, relevant_files = get_relevant_directories_remote(title, num_files=1)  # type: ignore
 
     logger.info("Getting response from ChatGPT...")
     human_message = human_message_prompt.format(
