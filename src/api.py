@@ -11,7 +11,7 @@ stub = modal.Stub("handle-ticket")
 image = (
     modal.Image.debian_slim()
     .apt_install("git")
-    .pip_install("openai", "PyGithub", "loguru")
+    .pip_install("openai", "PyGithub", "loguru", "docarray")
 )
 secrets = [
     modal.Secret.from_name("bot-token"),
