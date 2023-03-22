@@ -13,7 +13,7 @@ class JinaClient(BaseModel):
         payload = {"data": [{"text": query}], "parameters": {}}
         response = requests.post(f"{self.url}/search", json=payload)
         return response.json()["data"]
-    
+
     def index(self, docs: DocumentArray):
         docs_array = docs.to_dict()
         payload = {"data": docs_array, "parameters": {}}
