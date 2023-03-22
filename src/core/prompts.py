@@ -30,10 +30,11 @@ User Request: {comment} in this file: {path} on this line: {pr_line}
 
 Relevant Directories:
 {relevant_directories}
-
+{pr_file_path}
 Relevant Related Files:
 ```
 {relevant_files}
+{pr_file}
 ```
 """
 

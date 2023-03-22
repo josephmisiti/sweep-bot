@@ -85,7 +85,9 @@ def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:
     return relevant_directories, relevant_files
 
 
-def get_relevant_directories_remote(repo: Repository, query: str, num_files: int = 5) -> tuple[str, str]:
+def get_relevant_directories_remote(
+    repo: Repository, query: str, num_files: int = 5
+) -> tuple[str, str]:
     # Initialize the relevant directories string
     relevant_directories = ""
     relevant_files = '"""'
@@ -100,7 +102,7 @@ def get_relevant_directories_remote(repo: Repository, query: str, num_files: int
         relevant_files += f'"""\n{file_contents}\n"""'
         if file_path not in relevant_dirs_set:
             relevant_dirs_set.add(file_path)
-            relevant_directories += file_path.replace("src/", "") + "\n"
+            relevant_directories += file_path + "\n"
 
     # Print the relevant directories and files strings
     print(relevant_directories)
@@ -110,11 +112,18 @@ def get_relevant_directories_remote(repo: Repository, query: str, num_files: int
 
 def get_file_contents(repo: Repository, file_path):
     file = repo.get_contents(file_path)
-    contents = file.decoded_content.decode('utf-8')
+    contents = file.decoded_content.decode("utf-8")
     return contents
 
 
-def download_repository(repo_name: str, branch_name: str = "", include_dirs: list[str] = [], exclude_dirs: list[str] = [], include_exts: list[str] = [], exclude_exts: list[str] = []):
+def download_repository(
+    repo_name: str,
+    branch_name: str = "",
+    include_dirs: list[str] = [],
+    exclude_dirs: list[str] = [],
+    include_exts: list[str] = [],
+    exclude_exts: list[str] = [],
+):
     # create a Github object using the access token
     g = Github(os.environ.get("GITHUB_TOKEN"))
 
@@ -139,7 +148,10 @@ def download_repository(repo_name: str, branch_name: str = "", include_dirs: lis
             elif file_content.name not in exclude_dirs:
                 contents.extend(repo.get_contents(file_content.path))
         else:
-            if any(file_content.name.endswith(ext) for ext in include_exts) and file_content.name != "__init__.py":
+            if (
+                any(file_content.name.endswith(ext) for ext in include_exts)
+                and file_content.name != "__init__.py"
+            ):
                 if not any(file_content.name.endswith(ext) for ext in exclude_exts):
                     try:
                         text = file_content.decoded_content.decode("utf-8")
@@ -147,13 +159,25 @@ def download_repository(repo_name: str, branch_name: str = "", include_dirs: lis
                     except Exception:
                         print("Failed Decoding: " + file_content.path)
                         continue
-                    doc = Document(content=text, tags={'file_path': file_content.path, "repository": repo_name})
+                    doc = Document(
+                        content=text,
+                        tags={"file_path": file_content.path, "repository": repo_name},
+                    )
                     docs.append(doc)
     return docs
 
 
-def index_full_repository(repo_name: str, branch_name: str = None, include_dirs: list[str] = [], exclude_dirs: list[str] = [], include_exts: list[str] = [], exclude_exts: list[str] = []):
-    docs = download_repository(repo_name, branch_name, include_dirs, exclude_dirs, include_exts, exclude_exts)
+def index_full_repository(
+    repo_name: str,
+    branch_name: str = "",
+    include_dirs: list[str] = [],
+    exclude_dirs: list[str] = [],
+    include_exts: list[str] = [],
+    exclude_exts: list[str] = [],
+):
+    docs = download_repository(
+        repo_name, branch_name, include_dirs, exclude_dirs, include_exts, exclude_exts
+    )
     client = JinaClient(JINA_ENDPOINT)
     indexed = client.index(docs)
     return len(indexed)
