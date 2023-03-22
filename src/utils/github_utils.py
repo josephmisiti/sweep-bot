@@ -107,7 +107,7 @@ def get_relevant_directories_remote(query: str, num_files: int = 5) -> tuple[str
     return relevant_directories, relevant_files
 
 
-def download_repository(repo_name: str, branch_name: str = None, include_dirs: list[str] = [], exclude_dirs: list[str] = [], include_exts: list[str] = [], exclude_exts: list[str] = []):
+def download_repository(repo_name: str, branch_name: str = "", include_dirs: list[str] = [], exclude_dirs: list[str] = [], include_exts: list[str] = [], exclude_exts: list[str] = []):
     # create a Github object using the access token
     g = Github(os.environ.get("GITHUB_TOKEN"))
 
@@ -115,7 +115,7 @@ def download_repository(repo_name: str, branch_name: str = None, include_dirs: l
     repo = g.get_repo(repo_name)
 
     # get the contents of the root directory of the repository
-    if branch_name is None:
+    if branch_name is "":
         contents = repo.get_contents("")
     else:
         contents = repo.get_contents("", ref=branch_name)
