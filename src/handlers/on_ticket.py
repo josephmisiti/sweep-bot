@@ -58,7 +58,7 @@ def on_ticket(
     logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
     repo = g.get_repo(repo_full_name)
     # src_contents = repo.get_contents("/")
-    relevant_directories, relevant_files = get_relevant_directories_remote(title, num_files=1)  # type: ignore
+    relevant_directories, relevant_files = get_relevant_directories_remote(repo, f"{title}\n{summary}", num_files=1)  # type: ignore
 
     logger.info("Getting response from ChatGPT...")
     human_message = human_message_prompt.format(
@@ -72,7 +72,7 @@ def on_ticket(
         relevant_files=relevant_files,
     )
     sweep_bot = SweepBot.from_system_message_content(
-        system_message_prompt + "\n\n" + human_message, model="gpt-3.5-turbo", repo=repo
+        system_message_prompt + "\n\n" + human_message, model="gpt-4", repo=repo
     )
     reply = sweep_bot.chat(reply_prompt)
     sweep_bot.undo()  # not doing it sometimes causes problems: the bot thinks it has already has done the fixes

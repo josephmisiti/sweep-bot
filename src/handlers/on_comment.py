@@ -13,7 +13,7 @@ from src.core.prompts import system_message_prompt, human_message_prompt_comment
 from src.core.sweep_bot import SweepBot
 from src.utils.github_utils import (
     get_github_client,
-    get_relevant_directories,  # get_relevant_directories_remote,
+    get_relevant_directories_remote,
 )
 
 github_access_token = os.environ.get("GITHUB_TOKEN")
@@ -52,19 +52,15 @@ def on_comment(
     logger.info("Getting repo {repo_full_name}", repo_full_name=repo_full_name)
     g = get_github_client(installation_id)
     repo = g.get_repo(repo_full_name)
-    src_contents = repo.get_contents("/", ref=branch_name)
-    relevant_directories, relevant_files = get_relevant_directories(src_contents, repo)  # type: ignore
+    relevant_directories, relevant_files = get_relevant_directories_remote(repo, comment, num_files=1)  # type: ignore
     # Gets the exact line that the comment happened on
-    pr_file = (
-        repo.get_contents(path, ref=branch_name)
-        .decoded_content.decode("utf-8")
-        .splitlines()
-    )
-    pr_line = pr_file[pr_line_position - 1]
+    pr_file = repo.get_contents(path, ref=branch_name).decoded_content.decode("utf-8")
+    pr_line = pr_file.splitlines()[pr_line_position - 1]
     # src_contents = repo.get_contents("src", ref=ref)
     # relevant_directories, relevant_files = get_relevant_directories_remote(title)  # type: ignore
 
     logger.info("Getting response from ChatGPT...")
+    pr_file_path = path.strip()
     human_message = human_message_prompt_comment.format(
         repo_name=repo_name,
         repo_description=repo_description,
@@ -75,6 +71,8 @@ def on_comment(
         pr_title=pr_title,
         pr_body=pr_body,
         pr_line=pr_line,
+        pr_file=pr_file,
+        pr_file_path=pr_file_path,
     )
 
     sweep_bot = SweepBot.from_system_message_content(

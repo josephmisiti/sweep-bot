@@ -2,10 +2,14 @@ import os
 import time
 import re
 from github import Github
+from github.Repository import Repository
 
 from jwt import encode
 import requests  # type: ignore
 from src.utils.jina_utils import JinaClient
+from docarray import Document, DocumentArray
+
+JINA_ENDPOINT = "https://apt-mole-24b968d6c0.wolf.jina.ai"
 
 
 def make_valid_string(string: str):
@@ -81,24 +85,99 @@ def get_relevant_directories(src_contents: list, repo) -> tuple[str, str]:
     return relevant_directories, relevant_files
 
 
-def get_relevant_directories_remote(query: str, num_files: int = 5) -> tuple[str, str]:
+def get_relevant_directories_remote(
+    repo: Repository, query: str, num_files: int = 5
+) -> tuple[str, str]:
     # Initialize the relevant directories string
     relevant_directories = ""
     relevant_files = '"""'
-    client = JinaClient("https://liberal-pika-72e15321a7.wolf.jina.ai")
+    client = JinaClient(JINA_ENDPOINT)
     # filter_tags = {'repository': {'$eq': "sweepai/forked_langchain"}}
     result = client.search(query)
     relevant_dirs_set = set()
-    matches = result["data"][0]["matches"][:num_files]
+    matches = result[0]["matches"][:num_files]
     for match in matches:
-        file_contents = match["text"]
-        relevant_files += f'"""\n{file_contents}\n"""'
         file_path = match["tags"]["file_path"]
+        file_contents = get_file_contents(repo, file_path)
+        relevant_files += f'"""\n{file_contents}\n"""'
         if file_path not in relevant_dirs_set:
             relevant_dirs_set.add(file_path)
-            relevant_directories += file_path.replace("src/", "") + "\n"
+            relevant_directories += file_path + "\n"
 
     # Print the relevant directories and files strings
     print(relevant_directories)
     print(relevant_files)
     return relevant_directories, relevant_files
+
+
+def get_file_contents(repo: Repository, file_path):
+    file = repo.get_contents(file_path)
+    contents = file.decoded_content.decode("utf-8")
+    return contents
+
+
+def download_repository(
+    repo_name: str,
+    branch_name: str = "",
+    include_dirs: list[str] = [],
+    exclude_dirs: list[str] = [],
+    include_exts: list[str] = [],
+    exclude_exts: list[str] = [],
+):
+    # create a Github object using the access token
+    g = Github(os.environ.get("GITHUB_TOKEN"))
+
+    # get the repository object
+    repo = g.get_repo(repo_name)
+
+    # get the contents of the root directory of the repository
+    if branch_name == "":
+        contents = repo.get_contents("")
+    else:
+        contents = repo.get_contents("", ref=branch_name)
+
+    # create an empty DocumentArray to hold the downloaded files
+    docs = DocumentArray()
+
+    # recursively download all files and directories
+    while contents:
+        file_content = contents.pop(0)
+        if file_content.type == "dir":
+            if file_content.name in include_dirs:
+                contents.extend(repo.get_contents(file_content.path))
+            elif file_content.name not in exclude_dirs:
+                contents.extend(repo.get_contents(file_content.path))
+        else:
+            if (
+                any(file_content.name.endswith(ext) for ext in include_exts)
+                and file_content.name != "__init__.py"
+            ):
+                if not any(file_content.name.endswith(ext) for ext in exclude_exts):
+                    try:
+                        text = file_content.decoded_content.decode("utf-8")
+                        print("Decoded: " + file_content.path)
+                    except Exception:
+                        print("Failed Decoding: " + file_content.path)
+                        continue
+                    doc = Document(
+                        content=text,
+                        tags={"file_path": file_content.path, "repository": repo_name},
+                    )
+                    docs.append(doc)
+    return docs
+
+
+def index_full_repository(
+    repo_name: str,
+    branch_name: str = "",
+    include_dirs: list[str] = [],
+    exclude_dirs: list[str] = [],
+    include_exts: list[str] = [],
+    exclude_exts: list[str] = [],
+):
+    docs = download_repository(
+        repo_name, branch_name, include_dirs, exclude_dirs, include_exts, exclude_exts
+    )
+    client = JinaClient(JINA_ENDPOINT)
+    indexed = client.index(docs)
+    return len(indexed)
