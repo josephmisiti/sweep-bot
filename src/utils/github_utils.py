@@ -8,7 +8,7 @@ import requests  # type: ignore
 from src.utils.jina_utils import JinaClient
 from docarray import Document, DocumentArray
 
-JINA_ENDPOINT = "https://liberal-pika-72e15321a7.wolf.jina.ai"
+JINA_ENDPOINT = "https://apt-mole-24b968d6c0.wolf.jina.ai  "
 
 
 def make_valid_string(string: str):
