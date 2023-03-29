@@ -17,11 +17,13 @@ To set up the project, follow these steps:
     - `BOT_TOKEN`: Your Github bot token
     - `OPENAI_SECRET`: Your OpenAI API secret key
 5. Run the bot using `modal serve src/api.py` and add the endpoint URL to the repo webhooks.
+6. (Optional) Index your codebase and relevant documents into Jina
 
 ## Tools
 - Modal
 - OpenAI
 - PyGithub
+- Jina
 
 ## Usage
 
