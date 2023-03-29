@@ -1,6 +1,10 @@
 # Sweep
 
-Sweep is a Github assistant bot that helps with issue and pull request management. 
+Sweep is a Github assistant bot that completes tickets by making a PR and responds to PR comments.
+
+## Story
+
+We were frustrated by small tickets such simple bug fixes, annoying refactors and small features and realized ChatGPT/GPT-4 could easily do it. Unlike copilot, this can solve entire tickets and can be parallelized: someone can spin up 10 tickets and have it solve them all at once. Unfortunately, Github released much of the same features two weeks and we decided to call it cuts for this project.
 
 ## Setup
 
@@ -12,8 +16,13 @@ To set up the project, follow these steps:
 4. Set up your environment variables in a `.env` file. You will need to set the following variables:
     - `BOT_TOKEN`: Your Github bot token
     - `OPENAI_SECRET`: Your OpenAI API secret key
-5. Run the bot using `poetry run python src/main.py`
+5. Run the bot using `modal serve src/api.py` and add the endpoint URL to the repo webhooks.
+
+## Tools
+- Modal
+- OpenAI
+- PyGithub
 
 ## Usage
 
-Once the bot is running, it will listen for new issues and pull requests. When a new issue or pull request is created, the bot will automatically assign it to the appropriate team member based on the issue or pull request's labels.
+Once the bot is running, it will listen for new issues by creating a PR and will respond to PR comments, being aware of the line numbers.
