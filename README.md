@@ -4,7 +4,7 @@ Sweep is a Github assistant bot that completes tickets by making a PR and respon
 
 ## Story
 
-We were frustrated by small tickets such simple bug fixes, annoying refactors and small features and realized ChatGPT/GPT-4 could easily do it. Unlike copilot, this can solve entire tickets and can be parallelized: someone can spin up 10 tickets and have it solve them all at once. Unfortunately, Github released much of the same features two weeks and we decided to call it cuts for this project.
+We were frustrated by small tickets such simple bug fixes, annoying refactors and small features and realized ChatGPT/GPT-4 could easily do it. Unlike copilot, this can solve entire tickets and can be parallelized: someone can spin up 10 tickets and have it solve them all at once. Unfortunately, Github released much of the same features recently and we decided to call it cuts for this project.
 
 ## Setup
 
